@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Σύστημα Διαχείρισης Εργαστηρίων</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            display: flex;
+            min-height: 100vh;
+            padding-top: 50px; /* Προσθέτω padding στην κορυφή του body για τα fixed στοιχεία */
+        }
+        .sidebar {
+            width: 250px;
+            background: #343a40;
+            color: white;
+            transition: all 0.3s;
+            position: fixed;
+            height: 100%;
+            z-index: 1000;
+            top: 50px; /* Sidebar starts below the fixed top bar */
+            padding-top: 10px; /* Add some padding for content below title */
+        }
+        .sidebar.collapsed {
+            margin-left: -250px;
+        }
+        .sidebar .nav-link {
+            color: rgba(255,255,255,.8);
+            padding: 10px 20px;
+        }
+        .sidebar .nav-link:hover {
+            color: white;
+            background: rgba(255,255,255,.1);
+        }
+        .sidebar .nav-link.active {
+            background: rgba(255,255,255,.2);
+        }
+        .main-content {
+            margin-left: 250px; /* Default margin when sidebar is open */
+            padding: 20px;
+            transition: all 0.3s;
+            width: 100%;
+        }
+        .main-content.expanded {
+            margin-left: 0; /* No margin when sidebar is collapsed */
+        }
+        .toggle-btn {
+            background: #343a40;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        /* Style for the fixed container of top buttons */
+        .top-fixed-buttons {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0; /* Extend to the right to potentially center content */
+            z-index: 1100;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px; /* Add padding around buttons */
+            background-color: #fff; /* Add background to blend with light mode */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Optional shadow */
+        }
+        /* Style for the title in the fixed top bar */
+        .top-bar-title h4 {
+            color: #000; /* Default color for light mode */
+            margin: 0; /* Remove default margin */
+        }
+        /* Style for the title in dark mode */
+        body.bg-dark .top-bar-title h4 {
+            color: #fff; /* White color for dark mode */
+        }
+        .tab-content {
+            padding: 20px;
+        }
+        .card-custom {
+            min-height: 270px;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+        }
+        .bg-flat-color-4 { background: #e57373 !important; }
+        .bg-flat-color-5 { background: #66bb6a !important; }
+        .dropdown .form-select, .dropdown .btn {
+            width: 300px;
+        }
+        .progress-bar-custom {
+            height: 15px;
+            background-color: #fff !important;
+        }
+        .text-shadow {
+            text-shadow: 1px 1px 2px #00000033;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-fixed-buttons">
+        <button class="toggle-btn" id="sidebarToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+        <button class="btn btn-outline-secondary" id="themeToggle">
+            <i class="fas fa-moon"></i> <span class="d-none d-md-inline">Dark/Light</span>
+        </button>
+        <!-- Νέο Home button -->
+        <button class="btn btn-primary goto-tab" data-tab="#dashboard">
+            <i class="fas fa-home me-1"></i> <span class="d-none d-md-inline">Αρχική</span>
+        </button>
+         <div class="top-bar-title" style="margin-left: auto; margin-right: auto;"><h4>Σύστημα Εργαστηρίων</h4></div> <!-- Κεντρικός τίτλος στην μπάρα -->
+    </div>
+    <div class="sidebar" id="sidebar">
+        <div class="p-3">
+            <h4>Σύστημα Εργαστηρίων</h4> <!-- Τίτλος μέσα στο sidebar, ορατός όταν ανοιχτό -->
+        </div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link active" href="#dashboard" data-bs-toggle="tab">
+                    <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#labs" data-bs-toggle="tab">
+                    <i class="fas fa-flask me-2"></i>Εργαστήρια
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#groups" data-bs-toggle="tab">
+                    <i class="fas fa-users me-2"></i>Τμήματα
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#students" data-bs-toggle="tab">
+                    <i class="fas fa-user-graduate me-2"></i>Φοιτητές
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#professors" data-bs-toggle="tab">
+                    <i class="fas fa-user-tie me-2"></i>Υπεύθυνοι
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#registrations" data-bs-toggle="tab">
+                    <i class="fas fa-clipboard-list me-2"></i>Εγγραφές
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#absences" data-bs-toggle="tab">
+                    <i class="fas fa-calendar-times me-2"></i>Απουσίες
+                </a>
+            </li>
+        </ul>
+    </div>
+    <div class="main-content" id="mainContent">
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="dashboard">
+                <h2 class="mb-4">Dashboard</h2>
+                <div class="row row-cols-1 row-cols-md-3 g-4">
+                    <div class="col">
+                        <div class="card h-100 text-center">
+                            <div class="card-body">
+                                <i class="fas fa-flask fa-2x mb-2"></i>
+                                <h5 class="card-title">Εργαστήρια</h5>
+                                <p class="card-text">Διαχείριση και επισκόπηση εργαστηρίων.</p>
+                                <button class="btn btn-primary goto-tab" data-tab="#labs">Μετάβαση</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card h-100 text-center">
+                            <div class="card-body">
+                                <i class="fas fa-users fa-2x mb-2"></i>
+                                <h5 class="card-title">Τμήματα</h5>
+                                <p class="card-text">Προβολή και διαχείριση τμημάτων.</p>
+                                <button class="btn btn-primary goto-tab" data-tab="#groups">Μετάβαση</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card h-100 text-center">
+                            <div class="card-body">
+                                <i class="fas fa-user-graduate fa-2x mb-2"></i>
+                                <h5 class="card-title">Φοιτητές</h5>
+                                <p class="card-text">Λίστα και στοιχεία φοιτητών.</p>
+                                <button class="btn btn-primary goto-tab" data-tab="#students">Μετάβαση</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card h-100 text-center">
+                            <div class="card-body">
+                                <i class="fas fa-user-tie fa-2x mb-2"></i>
+                                <h5 class="card-title">Υπεύθυνοι</h5>
+                                <p class="card-text">Υπεύθυνοι εργαστηρίων και στοιχεία επικοινωνίας.</p>
+                                <button class="btn btn-primary goto-tab" data-tab="#professors">Μετάβαση</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card h-100 text-center">
+                            <div class="card-body">
+                                <i class="fas fa-clipboard-list fa-2x mb-2"></i>
+                                <h5 class="card-title">Εγγραφές</h5>
+                                <p class="card-text">Διαχείριση εγγραφών φοιτητών.</p>
+                                <button class="btn btn-primary goto-tab" data-tab="#registrations">Μετάβαση</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card h-100 text-center">
+                            <div class="card-body">
+                                <i class="fas fa-calendar-times fa-2x mb-2"></i>
+                                <h5 class="card-title">Απουσίες</h5>
+                                <p class="card-text">Παρακολούθηση απουσιών φοιτητών.</p>
+                                <button class="btn btn-primary goto-tab" data-tab="#absences">Μετάβαση</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="labs">
+                <h2>Εργαστήρια</h2>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Όνομα</th>
+                                <th>Περιγραφή</th>
+                                <th>Μέγιστος Αριθμός Χρηστών</th>
+                                <th>Όριο Εγγραφών</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for lab in labs %}
+                            <tr>
+                                <td>{{ lab.lab_id }}</td>
+                                <td>{{ lab.name }}</td>
+                                <td>{{ lab.description }}</td>
+                                <td>{{ lab.maxusers }}</td>
+                                <td>{{ lab.reg_limit }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="groups">
+                <h2>Τμήματα</h2>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Ώρα/Μέρα</th>
+                                <th>Έτος</th>
+                                <th>Πληρότητα</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for group in groups %}
+                            <tr>
+                                <td>{{ group.group_id }}</td>
+                                <td>{{ group.daytime }}</td>
+                                <td>{{ group.year }}</td>
+                                <td>{{ group.occupancy_percentage|default('0')|round(0) }}%</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="students">
+                <h2>Φοιτητές</h2>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Όνομα</th>
+                                <th>Email</th>
+                                <th>Εξάμηνο</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for student in students %}
+                            <tr>
+                                <td>{{ student.am }}</td>
+                                <td>{{ student.name }}</td>
+                                <td>{{ student.email }}</td>
+                                <td>{{ student.semester }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="professors">
+                <h2>Υπεύθυνοι</h2>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Όνομα</th>
+                                <th>Email</th>
+                                <th>Γραφείο</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for prof in professors %}
+                            <tr>
+                                <td>{{ prof.prof_id }}</td>
+                                <td>{{ prof.name }}</td>
+                                <td>{{ prof.email }}</td>
+                                <td>{{ prof.office }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="registrations">
+                <h2>Εγγραφές</h2>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Φοιτητής</th>
+                                <th>Εργαστήριο</th>
+                                <th>Ημερομηνία Εγγραφής</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for reg in registrations %}
+                            <tr>
+                                <td>{{ reg.am }}</td>
+                                <td>{{ reg.lab_id }}</td>
+                                <td>{{ reg.reg_month }}/{{ reg.reg_year }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="absences">
+                <h2>Απουσίες</h2>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Φοιτητής</th>
+                                <th>Τμήμα</th>
+                                <th>Αριθμός Απουσιών</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for miss in absences %}
+                            <tr>
+                                <td>{{ miss.am }}</td>
+                                <td>{{ miss.group_id }}</td>
+                                <td>{{ miss.misses }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('sidebarToggle').addEventListener('click', function() {
+            document.getElementById('sidebar').classList.toggle('collapsed');
+            document.getElementById('mainContent').classList.toggle('expanded'); // Επανενεργοποίηση toggle class
+        });
+        // Dark/Light mode switch
+        const themeToggle = document.getElementById('themeToggle');
+        const body = document.body;
+        const topFixedButtons = document.querySelector('.top-fixed-buttons');
+        const sidebar = document.getElementById('sidebar');
+        const topBarTitle = document.querySelector('.top-bar-title h4');
+
+        // Set sidebar top margin based on fixed buttons height
+        const setSidebarTop = () => {
+            const topBarHeight = topFixedButtons.offsetHeight;
+            sidebar.style.top = `${topBarHeight}px`;
+            body.style.paddingTop = `${topBarHeight}px`; // Adjust body padding
+        };
+
+        // Call on load and resize
+        window.addEventListener('load', setSidebarTop);
+        window.addEventListener('resize', setSidebarTop);
+
+        themeToggle.addEventListener('click', function() {
+            body.classList.toggle('bg-dark');
+            body.classList.toggle('text-light');
+            // Change background of the fixed top bar as well
+            topFixedButtons.classList.toggle('bg-dark');
+            topFixedButtons.classList.toggle('bg-light');
+
+            // Εναλλαγή εικονιδίου
+            const icon = themeToggle.querySelector('i');
+            if (body.classList.contains('bg-dark')) {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+            } else {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+            }
+        });
+        // Κουμπιά μετάβασης στις καρτέλες
+        document.querySelectorAll('.goto-tab').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const tabId = this.getAttribute('data-tab');
+                // Ενεργοποιεί το tab
+                document.querySelectorAll('.tab-pane').forEach(tab => tab.classList.remove('show', 'active'));
+                document.querySelector(tabId).classList.add('show', 'active');
+                // Ενεργοποιεί το αντίστοιχο link στο sidebar
+                document.querySelectorAll('.sidebar .nav-link').forEach(link => link.classList.remove('active'));
+                document.querySelector('.sidebar .nav-link[href="' + tabId + '"]').classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html> 
