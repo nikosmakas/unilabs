@@ -115,6 +115,29 @@
     <div class="sidebar" id="sidebar">
         <div class="p-3">
             <h4>Σύστημα Εργαστηρίων</h4> <!-- Τίτλος μέσα στο sidebar, ορατός όταν ανοιχτό -->
+            
+            <!-- User Info Section -->
+            <div class="mt-3 p-2" style="background: rgba(255,255,255,0.1); border-radius: 5px;">
+                <small class="text-muted">Logged in as:</small>
+                <div class="fw-bold">{{ name }}</div>
+                <div class="badge bg-{% if role == 'student' %}success{% elif role == 'professor' %}primary{% elif role == 'admin' %}danger{% else %}secondary{% endif %}">
+                    {{ role|title }}
+                </div>
+                {% if AUTH_MODE == 'dev' %}
+                <div class="mt-2">
+                    <small class="text-warning">
+                        <i class="fas fa-exclamation-triangle"></i> Dev Mode
+                    </small>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Logout Button -->
+            <div class="mt-3">
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm w-100">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
         </div>
         <ul class="nav flex-column">
             <li class="nav-item">

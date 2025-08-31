@@ -13,7 +13,35 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'dev-key-123')  # Use a secure key!
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data/labregister.sqlite'
+app.config['AUTH_MODE'] = os.getenv('AUTH_MODE', 'cas')  # 'cas' for production, 'dev' for development
 init_app(app)
+
+# Development Authentication Configuration
+# WARNING: This is for development/testing only - NEVER enable in production!
+AUTH_MODE = app.config['AUTH_MODE']  # Get from app config
+
+# Fake users for development mode - ONLY for testing authorization system
+# WARNING: These are hardcoded test users - DO NOT use in production!
+FAKE_USERS = {
+    'student1': {
+        'name': 'Test Student',
+        'role': 'student',
+        'am': '13628',
+        'email': 'student1@test.gr'
+    },
+    'prof1': {
+        'name': 'Test Professor', 
+        'role': 'professor',
+        'prof_id': '1',
+        'email': 'prof1@test.gr'
+    },
+    'admin1': {
+        'name': 'Test Admin',
+        'role': 'admin', 
+        'admin_id': '1',
+        'email': 'admin1@test.gr'
+    }
+}
 
 # Error handlers for authorization
 @app.errorhandler(401)
@@ -34,6 +62,12 @@ SERVICE_URL = 'http://localhost:5000/cas_callback'
 
 @app.route('/login')
 def login():
+    # DEVELOPMENT MODE: Show fake user selection form
+    # WARNING: This is for development/testing only - NEVER enable in production!
+    if app.config['AUTH_MODE'] == 'dev':
+        return render_template('dev_login.html', users=FAKE_USERS)
+    
+    # PRODUCTION MODE: Redirect to CAS authentication
     params = {
         'service': SERVICE_URL
     }
@@ -41,6 +75,26 @@ def login():
 
 @app.route('/cas_callback')
 def cas_callback():
+    # DEVELOPMENT MODE: Handle fake user login
+    # WARNING: This is for development/testing only - NEVER enable in production!
+    if app.config['AUTH_MODE'] == 'dev':
+        username = request.args.get('username')
+        if not username or username not in FAKE_USERS:
+            return "Invalid development user", 400
+        
+        fake_user = FAKE_USERS[username]
+        
+        # Store session data for development user
+        session['schGrAcPersonID'] = fake_user.get('am') or fake_user.get('prof_id') or fake_user.get('admin_id')
+        session['role'] = fake_user['role']
+        session['name'] = fake_user['name']
+        
+        # Log development login for audit purposes
+        audit_log('dev_login', new_value=f"Development user {username} logged in as {fake_user['role']}")
+        
+        return redirect(url_for('dashboard'))
+    
+    # PRODUCTION MODE: Handle CAS authentication
     ticket = request.args.get('ticket')
     if not ticket:
         return redirect(url_for('login'))
@@ -81,7 +135,10 @@ def cas_callback():
 @app.route('/dashboard')
 @require_permission('dashboard', 'view')
 def dashboard():
-    return render_template('dashboard.html', name=session['name'], role=session['role'])
+    return render_template('dashboard.html', 
+                         name=session['name'], 
+                         role=session['role'],
+                         AUTH_MODE=app.config['AUTH_MODE'])
 
 @app.route('/logout')
 def logout():

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Development Login - UniLab</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .user-card {
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .user-card:hover {
+            border-color: #007bff;
+            background-color: #f8f9fa;
+        }
+        .user-card.student {
+            border-left: 4px solid #28a745;
+        }
+        .user-card.professor {
+            border-left: 4px solid #007bff;
+        }
+        .user-card.admin {
+            border-left: 4px solid #dc3545;
+        }
+        .role-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .role-badge.student {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .role-badge.professor {
+            background-color: #cce7ff;
+            color: #004085;
+        }
+        .role-badge.admin {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .user-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .user-email {
+            color: #666;
+            font-size: 14px;
+        }
+        .login-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        .login-btn:hover {
+            background-color: #0056b3;
+        }
+        .instructions {
+            background-color: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            color: #004085;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Development Login</h1>
+        
+        <!-- WARNING: Development Mode Only -->
+        <div class="warning">
+            <strong>⚠️ DEVELOPMENT MODE ONLY</strong><br>
+            This is a development/testing interface. <strong>NEVER</strong> enable this in production!
+            <br><br>
+            <strong>Purpose:</strong> Test the authorization system with different user roles without real CAS credentials.
+        </div>
+        
+        <!-- Instructions -->
+        <div class="instructions">
+            <strong>Instructions:</strong>
+            <ul>
+                <li>Select a user role below to test different authorization levels</li>
+                <li>Each user has different permissions based on their role</li>
+                <li>Use this to verify that the authorization system works correctly</li>
+            </ul>
+        </div>
+        
+        <!-- Available Users -->
+        <h2>Available Test Users:</h2>
+        
+        {% for username, user in users.items() %}
+        <div class="user-card {{ user.role }}">
+            <span class="role-badge {{ user.role }}">{{ user.role }}</span>
+            <div class="user-name">{{ user.name }}</div>
+            <div class="user-email">{{ user.email }}</div>
+            <div style="margin-top: 10px;">
+                <strong>ID:</strong> {{ user.get('am', user.get('prof_id', user.get('admin_id'))) }}
+            </div>
+            <a href="{{ url_for('cas_callback', username=username) }}" class="login-btn">
+                Login as {{ user.name }}
+            </a>
+        </div>
+        {% endfor %}
+        
+        <!-- Role Permissions Summary -->
+        <div style="margin-top: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 5px;">
+            <h3>Role Permissions Summary:</h3>
+            <ul>
+                <li><strong>Student:</strong> Can view groups, join/leave groups, view own profile</li>
+                <li><strong>Professor:</strong> Can manage groups, view/edit absences, manage enrollments</li>
+                <li><strong>Admin:</strong> Full access to all features including user management</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
