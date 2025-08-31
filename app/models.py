@@ -3,6 +3,9 @@ from flask_login import UserMixin
 
 db = SQLAlchemy()
 
+def init_app(app):
+    db.init_app(app)
+
 class Coursename(db.Model):
     __tablename__ = 'coursename'
     course_id = db.Column(db.Integer, primary_key=True)

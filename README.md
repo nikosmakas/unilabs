@@ -69,4 +69,4 @@ sequenceDiagram
     labregister.sqlite: SQLite database file
 
 ## GitHub Repository
-[https://github.com/nikosmakas/thesis]
+[https://github.com/nikosmakas/unilabs]

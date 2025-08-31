@@ -1,0 +1,66 @@
+{
+  "roles": ["guest", "student", "professor", "admin"],
+  "resources": {
+    "dashboard": {
+      "view": ["guest", "student", "professor", "admin"]
+    },
+    "labs": {
+      "view": ["guest", "student", "professor", "admin"],
+      "create": ["professor", "admin"],
+      "edit": ["professor", "admin"],
+      "delete": ["professor", "admin"],
+      "notes": "CRUD buttons visible only to professor/admin; guests/students only view."
+    },
+    "groups": {
+      "view": ["guest", "student", "professor", "admin"],
+      "create": ["professor", "admin"],
+      "edit": ["professor", "admin"],
+      "delete": ["professor", "admin"],
+      "join": ["student"],
+      "leave": ["student"],
+      "manage_enrollments": ["professor", "admin"],
+      "notes": "Students can join only if enrolled to the related course and group not full. Use DB transaction/lock to avoid overbooking."
+    },
+    "students_list": {
+      "view_full": ["admin"],
+      "view_own_profile": ["student"],
+      "view_professor_students": ["professor"],
+      "create": [],
+      "edit": ["student", "admin"],
+      "delete": ["admin"],
+      "notes": "Do not expose list publicly. If kept, show limited fields and opt-in visibility."
+    },
+    "professors_list": {
+      "view": ["guest", "student", "professor", "admin"],
+      "link_to_external_profile": ["guest", "student", "professor", "admin"],
+      "visible_filter": ["professor", "admin"],
+      "notes": "Link opens external profile with professor.id parameter."
+    },
+    "registrations": {
+      "view": ["student", "professor", "admin"],
+      "create": ["student"],
+      "cancel": ["student"],
+      "manage": ["professor", "admin"],
+      "notes": "Students create/cancel own registrations. Professors manage registrations for their groups."
+    },
+    "absences": {
+      "view_own": ["student"],
+      "view_group": ["professor", "admin"],
+      "edit_group_absences": ["professor", "admin"],
+      "audit_log": ["professor", "admin"],
+      "notes": "All edits must be logged (who, old, new, timestamp, reason)."
+    },
+    "user_management": {
+      "view": ["admin"],
+      "create": ["admin"],
+      "edit_roles": ["admin"],
+      "delete": ["admin"],
+      "notes": "Role assignment only via admin panel."
+    }
+  },
+  "global_notes": [
+    "Frontend visibility is only UX. All endpoints must enforce server-side authorization.",
+    "Use principle of least privilege. Soft-delete and audit-critical changes.",
+    "Mask PII (emails/AM) in public views; ensure CSRF, input validation and escape output."
+  ]
+}
