@@ -1,0 +1,714 @@
+{
+  "project_name": "Greek Student Laboratory Registration System",
+  "project_description": "A comprehensive university laboratory registration system built originally in ASP.NET Web Forms, enabling students to authenticate via CAS SSO, register for laboratory sessions, select courses and groups, and manage their academic information. The system includes Greek localization and handles complex academic workflows.",
+  "original_technology_stack": {
+    "backend": "ASP.NET Web Forms (.NET Framework)",
+    "database": "MySQL (labregister schema)",
+    "authentication": "CAS (Central Authentication Service) + ASP.NET Membership",
+    "frontend": "ASP.NET Web Controls + Bootstrap + jQuery",
+    "localization": "Greek (Greek error messages and UI text)"
+  },
+  "recommended_python_stack": {
+    "backend": "FastAPI or Flask",
+    "orm": "SQLAlchemy",
+    "validation": "Pydantic",
+    "authentication": "python-cas + Flask-Login/FastAPI-Users",
+    "database": "MySQL or PostgreSQL",
+    "frontend": "React or Vue.js + Bootstrap",
+    "api_client": "Axios",
+    "deployment": "Docker + nginx"
+  },
+  "project_structure": {
+    "core_files": {
+      "Default.aspx.cs": {
+        "description": "Main application logic, UI handling, lab registration",
+        "responsibilities": [
+          "Page lifecycle management",
+          "Database query orchestration",
+          "Student registration workflow",
+          "UI state management",
+          "CAS authentication processing"
+        ]
+      },
+      "mysufeemp.master.cs": {
+        "description": "Master page with common layout and notifications",
+        "responsibilities": [
+          "Common layout structure",
+          "Notification system",
+          "User session display"
+        ]
+      },
+      "CookieViewer.ascx.cs": {
+        "description": "CAS authentication cookie processing",
+        "responsibilities": [
+          "CAS ticket parsing",
+          "User attribute extraction",
+          "Authentication state management"
+        ]
+      },
+      "TicketManager.ascx.cs": {
+        "description": "CAS ticket management and SSO operations",
+        "responsibilities": [
+          "Ticket revocation",
+          "SSO logout operations",
+          "SAML request generation"
+        ]
+      },
+      "Global.asax.cs": {
+        "description": "Application lifecycle management",
+        "responsibilities": [
+          "Application startup/shutdown",
+          "Session management",
+          "Global error handling"
+        ]
+      }
+    },
+    "ui_structure": {
+      "LoginView2": "Registration and group selection interface",
+      "LoginView3": "Student profile and email management",
+      "LoginView4": "Student lab enrollments display",
+      "LoginView5": "Course/semester/lab selection cascading dropdowns",
+      "LoginView6-8": "Lab information and professor contact sections"
+    }
+  },
+  "database_schema": {
+    "core_tables": {
+      "student": {
+        "description": "Student master data",
+        "fields": {
+          "am": "VARCHAR(20) PRIMARY KEY - Student registration number",
+          "name": "VARCHAR(255) - Full name",
+          "semester": "INTEGER - Current semester",
+          "pwd": "VARCHAR(255) - Password (legacy)"
+        }
+      },
+      "coursename": {
+        "description": "Course definitions",
+        "fields": {
+          "course_id": "INTEGER PRIMARY KEY",
+          "name": "VARCHAR(255) - Course name",
+          "semester": "VARCHAR(10) - Semester identifier"
+        }
+      },
+      "course_lab": {
+        "description": "Laboratory definitions",
+        "fields": {
+          "lab_id": "INTEGER PRIMARY KEY",
+          "name": "VARCHAR(255) - Lab name",
+          "maxusers": "INTEGER - Maximum students per group",
+          "reg_limit": "DATE - Registration deadline"
+        }
+      },
+      "lab_groups": {
+        "description": "Lab session groups",
+        "fields": {
+          "group_id": "INTEGER PRIMARY KEY",
+          "daytime": "VARCHAR(100) - Schedule description",
+          "year": "VARCHAR(10) - Academic year"
+        }
+      },
+      "rel_lab_student": {
+        "description": "Student lab registrations",
+        "fields": {
+          "am": "VARCHAR(20) FOREIGN KEY",
+          "lab_id": "INTEGER FOREIGN KEY",
+          "status": "VARCHAR(50) - '�� �������', '��������', etc.",
+          "failures": "INTEGER DEFAULT 0",
+          "reg_month": "INTEGER",
+          "reg_year": "INTEGER"
+        }
+      },
+      "rel_group_student": {
+        "description": "Student group assignments",
+        "fields": {
+          "am": "VARCHAR(20) FOREIGN KEY",
+          "group_id": "INTEGER FOREIGN KEY"
+        }
+      },
+      "professor": {
+        "description": "Professor information",
+        "fields": {
+          "prof_id": "INTEGER PRIMARY KEY",
+          "name": "VARCHAR(255)",
+          "status": "VARCHAR(100) - Academic title",
+          "office": "VARCHAR(100) - Office location",
+          "tel": "VARCHAR(50) - Phone number",
+          "email": "VARCHAR(255)"
+        }
+      },
+      "student_misses_pergroup": {
+        "description": "Student attendance tracking",
+        "fields": {
+          "am": "VARCHAR(20) FOREIGN KEY",
+          "group_id": "INTEGER FOREIGN KEY",
+          "misses": "TEXT - Absence dates"
+        }
+      }
+    },
+    "relationship_tables": {
+      "rel_course_lab": "Links courses to labs",
+      "rel_lab_group": "Links labs to groups",
+      "rel_group_prof": "Links groups to professors",
+      "studtouser": "Links students to ASP.NET users",
+      "my_aspnet_users": "ASP.NET Membership users table",
+      "my_aspnet_membership": "ASP.NET Membership details table"
+    }
+  },
+  "function_mappings": {
+    "database_queries": {
+      "SelectStatusAndFailuresOfStudent": {
+        "purpose": "Get student's lab status and failure count",
+        "sql": "SELECT status, Failures from rel_lab_student WHERE am = ? AND lab_id = ?",
+        "python_equivalent": "get_student_lab_status(student_id: str, lab_id: int) -> dict"
+      },
+      "SelectCoursesFromSemester": {
+        "purpose": "Get courses for a semester",
+        "sql": "SELECT course_id, name FROM coursename WHERE semester = ?",
+        "python_equivalent": "get_courses_by_semester(semester: str) -> List[dict]"
+      },
+      "SelectLabsFromCourse": {
+        "purpose": "Get labs for a course",
+        "sql": "SELECT * from course_lab LEFT JOIN rel_course_lab ON course_lab.lab_id = rel_course_lab.lab_id WHERE rel_course_lab.course_id = ?",
+        "python_equivalent": "get_labs_by_course(course_id: int) -> List[dict]"
+      },
+      "SelectGroupsFromLab": {
+        "purpose": "Get groups for a lab and year",
+        "sql": "SELECT * from lab_groups LEFT JOIN rel_lab_group ON lab_groups.group_id = rel_lab_group.group_id WHERE rel_lab_group.lab_id = ? AND lab_groups.year = ?",
+        "python_equivalent": "get_groups_by_lab(lab_id: int, year: str) -> List[dict]"
+      },
+      "SelectStudentGroups": {
+        "purpose": "Get student's enrolled groups",
+        "sql": "Complex join query across multiple tables",
+        "python_equivalent": "get_student_enrollments(student_id: str, year: str) -> List[dict]"
+      },
+      "CountStudentsInGroup": {
+        "purpose": "Count students in a specific group",
+        "sql": "SELECT COUNT(am) FROM rel_group_student LEFT JOIN lab_groups ON rel_group_student.group_id = lab_groups.group_id WHERE rel_group_student.group_id = ? AND lab_groups.year = ?",
+        "python_equivalent": "count_students_in_group(group_id: int, year: str) -> int"
+      }
+    },
+    "database_operations": {
+      "DoGroupRegistration": {
+        "purpose": "Register student to lab and group",
+        "operations": [
+          "Validate registration limits",
+          "Check existing registrations",
+          "Handle failure status updates",
+          "Insert lab-student relationship",
+          "Insert group assignment"
+        ],
+        "python_route": "POST /api/register-lab"
+      },
+      "UpdateStudentPrefs": {
+        "purpose": "Change student's group assignment",
+        "operations": [
+          "Validate new group capacity",
+          "Update group assignment"
+        ],
+        "python_route": "PUT /api/update-group"
+      },
+      "update_email": {
+        "purpose": "Update student profile information",
+        "operations": [
+          "Validate input data",
+          "Update student table",
+          "Update membership email"
+        ],
+        "python_route": "PUT /api/update-profile"
+      }
+    },
+    "authentication_functions": {
+      "CookieViewer": {
+        "purpose": "Process CAS authentication data",
+        "operations": [
+          "Decrypt FormsAuthentication ticket",
+          "Extract CAS ticket data",
+          "Parse SAML attributes",
+          "Extract student ID, name, email",
+          "Set session variables"
+        ],
+        "python_equivalent": "process_cas_authentication() -> dict"
+      },
+      "CheckUserRegistration": {
+        "purpose": "Verify or create user account",
+        "operations": [
+          "Check if user exists in database",
+          "Create ASP.NET Membership account",
+          "Insert student record",
+          "Assign Student role"
+        ],
+        "python_equivalent": "verify_or_create_user(cas_data: dict) -> bool"
+      },
+      "Login1_Authenticate": {
+        "purpose": "Handle login validation",
+        "operations": [
+          "Validate credentials",
+          "Check user role",
+          "Enable UI elements"
+        ],
+        "python_equivalent": "@login_required decorator + role validation"
+      }
+    },
+    "ui_event_handlers": {
+      "changed_semester": {
+        "trigger": "Semester dropdown selection",
+        "action": "Populate courses dropdown",
+        "python_endpoint": "GET /api/courses/{semester}"
+      },
+      "changed_course": {
+        "trigger": "Course dropdown selection",
+        "action": "Populate labs dropdown",
+        "python_endpoint": "GET /api/labs/{course_id}"
+      },
+      "changed_lab": {
+        "trigger": "Lab dropdown selection",
+        "action": "Populate groups dropdown and enable registration",
+        "python_endpoint": "GET /api/groups/{lab_id}"
+      },
+      "submit_click": {
+        "trigger": "Registration submit button",
+        "action": "Process registration or update",
+        "python_endpoint": "POST /api/register-lab or PUT /api/update-group"
+      }
+    }
+  },
+  "application_flow": {
+    "user_journey": [
+      {
+        "step": 1,
+        "action": "CAS Authentication",
+        "description": "User redirected to CAS server for SSO login"
+      },
+      {
+        "step": 2,
+        "action": "Authentication Processing",
+        "description": "Extract user info from CAS response, create/verify account"
+      },
+      {
+        "step": 3,
+        "action": "Dashboard Load",
+        "description": "Display user dashboard with academic year calculation"
+      },
+      {
+        "step": 4,
+        "action": "Course Selection",
+        "description": "Cascading dropdowns: Semester -> Course -> Lab -> Group"
+      },
+      {
+        "step": 5,
+        "action": "Registration",
+        "description": "Validate capacity, deadlines, and submit registration"
+      },
+      {
+        "step": 6,
+        "action": "Confirmation",
+        "description": "Display success/error messages and update UI"
+      }
+    ],
+    "academic_year_logic": {
+      "description": "Academic year determination based on day of year",
+      "rule": "If current day < 35 (February 4th), use previous year, otherwise current year",
+      "implementation": "yearofinterest = (currentyear - 1) if dayofyear < 35 else currentyear"
+    }
+  },
+  "python_route_mappings": {
+    "main_routes": {
+      "/": {
+        "method": "GET",
+        "description": "Main dashboard - equivalent to Default.aspx Page_Load",
+        "returns": "HTML template with user data"
+      },
+      "/api/courses/{semester}": {
+        "method": "GET",
+        "description": "Get courses for semester - equivalent to changed_semester",
+        "returns": "JSON list of courses"
+      },
+      "/api/labs/{course_id}": {
+        "method": "GET",
+        "description": "Get labs for course - equivalent to changed_course",
+        "returns": "JSON list of labs"
+      },
+      "/api/groups/{lab_id}": {
+        "method": "GET",
+        "description": "Get groups for lab - equivalent to changed_lab",
+        "returns": "JSON list of groups with capacity info"
+      },
+      "/api/register-lab": {
+        "method": "POST",
+        "description": "Register student to lab/group - equivalent to DoGroupRegistration",
+        "body": "{student_id, lab_id, group_id}",
+        "returns": "Success/error status"
+      },
+      "/api/update-group": {
+        "method": "PUT",
+        "description": "Change student's group - equivalent to UpdateStudentPrefs",
+        "body": "{student_id, old_group_id, new_group_id}",
+        "returns": "Success/error status"
+      },
+      "/api/update-profile": {
+        "method": "PUT",
+        "description": "Update student profile - equivalent to update_email",
+        "body": "{name, semester, email}",
+        "returns": "Success/error status"
+      },
+      "/api/student-labs/{student_id}": {
+        "method": "GET",
+        "description": "Get student's lab enrollments - equivalent to FetchStudentLabs",
+        "returns": "JSON list of student's registrations"
+      },
+      "/api/professor-info/{group_id}/{lab_id}": {
+        "method": "GET",
+        "description": "Get professor contact info - equivalent to FillProfs",
+        "returns": "JSON professor details"
+      }
+    },
+    "authentication_routes": {
+      "/cas/login": {
+        "method": "GET",
+        "description": "CAS authentication entry point",
+        "action": "Redirect to CAS server"
+      },
+      "/cas/callback": {
+        "method": "GET",
+        "description": "Process CAS response - equivalent to CookieViewer",
+        "action": "Process ticket, create session"
+      },
+      "/logout": {
+        "method": "POST",
+        "description": "Logout and clear session",
+        "action": "Clear session, redirect to CAS logout"
+      }
+    }
+  },
+  "data_models_python": {
+    "student_model": {
+      "class": "Student",
+      "table": "student",
+      "fields": {
+        "am": "String(20), primary_key=True",
+        "name": "String(255)",
+        "semester": "Integer",
+        "pwd": "String(255)"
+      },
+      "relationships": {
+        "lab_registrations": "relationship('StudentLabRegistration', back_populates='student')",
+        "group_assignments": "relationship('StudentGroupAssignment', back_populates='student')"
+      }
+    },
+    "course_model": {
+      "class": "Course",
+      "table": "coursename",
+      "fields": {
+        "course_id": "Integer, primary_key=True",
+        "name": "String(255)",
+        "semester": "String(10)"
+      },
+      "relationships": {
+        "labs": "relationship('Lab', secondary='rel_course_lab')"
+      }
+    },
+    "lab_model": {
+      "class": "Lab",
+      "table": "course_lab",
+      "fields": {
+        "lab_id": "Integer, primary_key=True",
+        "name": "String(255)",
+        "maxusers": "Integer",
+        "reg_limit": "Date"
+      },
+      "relationships": {
+        "groups": "relationship('LabGroup', secondary='rel_lab_group')",
+        "student_registrations": "relationship('StudentLabRegistration', back_populates='lab')"
+      }
+    },
+    "lab_group_model": {
+      "class": "LabGroup",
+      "table": "lab_groups",
+      "fields": {
+        "group_id": "Integer, primary_key=True",
+        "daytime": "String(100)",
+        "year": "String(10)"
+      },
+      "relationships": {
+        "students": "relationship('Student', secondary='rel_group_student')",
+        "professor": "relationship('Professor', secondary='rel_group_prof')"
+      }
+    },
+    "student_lab_registration_model": {
+      "class": "StudentLabRegistration",
+      "table": "rel_lab_student",
+      "fields": {
+        "am": "String(20), ForeignKey('student.am'), primary_key=True",
+        "lab_id": "Integer, ForeignKey('course_lab.lab_id'), primary_key=True",
+        "status": "String(50)",
+        "failures": "Integer, default=0",
+        "reg_month": "Integer",
+        "reg_year": "Integer"
+      },
+      "relationships": {
+        "student": "relationship('Student', back_populates='lab_registrations')",
+        "lab": "relationship('Lab', back_populates='student_registrations')"
+      }
+    },
+    "professor_model": {
+      "class": "Professor",
+      "table": "professor",
+      "fields": {
+        "prof_id": "Integer, primary_key=True",
+        "name": "String(255)",
+        "status": "String(100)",
+        "office": "String(100)",
+        "tel": "String(50)",
+        "email": "String(255)"
+      }
+    }
+  },
+  "business_logic_rules": {
+    "registration_validation": {
+      "deadline_check": {
+        "description": "Validate registration is before deadline",
+        "implementation": "Compare current date with lab.reg_limit",
+        "error_message": "��� ����������� � ������ / ������� �� �����"
+      },
+      "capacity_check": {
+        "description": "Ensure group has available capacity",
+        "implementation": "Count current students < lab.maxusers",
+        "error_message": "�� ����� ��� ���� �������� ������"
+      },
+      "duplicate_check": {
+        "description": "Prevent duplicate registrations",
+        "implementation": "Check existing rel_lab_student records"
+      },
+      "failure_retry": {
+        "description": "Allow re-registration after failure",
+        "implementation": "If status = '��������', allow new registration and increment failures count"
+      }
+    },
+    "academic_year_calculation": {
+      "description": "Determine active academic year",
+      "logic": "If day of year < 35 (early February), use previous calendar year, otherwise current year",
+      "usage": "Used for filtering groups and registrations by academic year"
+    },
+    "status_values": {
+      "in_progress": "�� �������",
+      "failed": "��������",
+      "completed": "������������",
+      "description": "Greek status values for lab completion"
+    }
+  },
+  "cas_integration": {
+    "attributes_extracted": {
+      "uid": {
+        "description": "Student registration number",
+        "processing": "Extract numeric part after 'i' character or use last 5 digits",
+        "example": "thl1000i50 -> 50"
+      },
+      "cn;lang-el": {
+        "description": "Greek full name",
+        "usage": "Display name in UI"
+      },
+      "eduPersonAffiliation": {
+        "description": "User role/affiliation",
+        "expected_value": "student",
+        "usage": "Role-based access control"
+      },
+      "mail": {
+        "description": "Email address",
+        "usage": "Contact information and notifications"
+      }
+    },
+    "authentication_flow": {
+      "1_redirect": "Redirect user to CAS server for authentication",
+      "2_callback": "CAS server returns with service ticket",
+      "3_validation": "Validate ticket and extract user attributes",
+      "4_session": "Create local user session",
+      "5_account": "Create user account if first login"
+    },
+    "python_implementation": {
+      "library": "python-cas or custom SAML implementation",
+      "session_management": "Flask-Session or FastAPI session middleware",
+      "user_creation": "Automatic account creation on first successful CAS login"
+    }
+  },
+  "ui_control_mappings": {
+    "aspnet_to_html": {
+      "DropDownList": {
+        "html_equivalent": "<select> with <option> elements",
+        "react_equivalent": "Select component or custom dropdown",
+        "behavior": "Cascading dropdowns with AJAX loading"
+      },
+      "LoginView": {
+        "html_equivalent": "Conditional rendering based on authentication state",
+        "react_equivalent": "Conditional JSX rendering",
+        "behavior": "Show/hide sections based on user login status"
+      },
+      "GridView": {
+        "html_equivalent": "<table> with pagination",
+        "react_equivalent": "DataGrid or Table component",
+        "behavior": "Paginated data display with custom headers"
+      },
+      "UpdatePanel": {
+        "html_equivalent": "AJAX-updated sections",
+        "react_equivalent": "Component state updates",
+        "behavior": "Partial page updates without full reload"
+      },
+      "TextBox": {
+        "html_equivalent": "<input type='text'>",
+        "react_equivalent": "Input component",
+        "behavior": "Form input with validation"
+      },
+      "Button": {
+        "html_equivalent": "<button> or <input type='submit'>",
+        "react_equivalent": "Button component",
+        "behavior": "Form submission or action trigger"
+      }
+    }
+  },
+  "error_handling": {
+    "database_errors": {
+      "message": "������ ���� �����������. ����������� ��������",
+      "translation": "Communication error. Try again later",
+      "handling": "Catch MySqlException, rollback transactions, display user-friendly message"
+    },
+    "validation_errors": {
+      "invalid_semester": "����� �� ������� ������� �� ������",
+      "missing_name": "����� �������������",
+      "invalid_email": "�������� �� email ���",
+      "invalid_am": "����� ������ �������"
+    },
+    "business_logic_errors": {
+      "registration_closed": "��� ����������� � ������ / ������� �� �����",
+      "group_full": "�� ����� ��� ���� �������� ������",
+      "select_group": "�������� �����",
+      "account_locked": "� ����������� ����� �����������"
+    }
+  },
+  "notification_system": {
+    "attendance_notifications": {
+      "description": "Display student absences in dropdown notifications",
+      "implementation": "Master page createNtfs function generates HTML for notification dropdown",
+      "message_format": "����� X �������� ��� [Lab Name]",
+      "python_equivalent": "WebSocket or polling-based notification system"
+    }
+  },
+  "security_considerations": {
+    "current_vulnerabilities": {
+      "sql_injection": {
+        "issue": "String concatenation in SQL queries",
+        "example": "WHERE (student.am = ",
+        "+" "am",
+        "+" ")",
+        "fix": "Use parameterized queries/ORM"
+      },
+      "input_validation": {
+        "issue": "Limited client-side validation",
+        "fix": "Implement server-side validation with Pydantic models"
+      }
+    },
+    "recommended_security": {
+      "authentication": "Secure CAS integration with HTTPS",
+      "authorization": "Role-based access control",
+      "input_validation": "Pydantic models with type checking",
+      "sql_injection": "SQLAlchemy ORM with parameterized queries",
+      "session_security": "Secure session cookies with expiration",
+      "rate_limiting": "API rate limiting for registration endpoints"
+    }
+  },
+  "migration_strategy": {
+    "phase_1": {
+      "title": "Database Schema Migration",
+      "tasks": [
+        "Create SQLAlchemy models matching existing schema",
+        "Set up database connections and migrations",
+        "Create seed data for testing"
+      ]
+    },
+    "phase_2": {
+      "title": "Authentication System",
+      "tasks": [
+        "Implement CAS integration",
+        "Set up session management",
+        "Create user account management"
+      ]
+    },
+    "phase_3": {
+      "title": "Core API Development",
+      "tasks": [
+        "Build course/lab/group selection APIs",
+        "Implement registration logic",
+        "Add profile management endpoints"
+      ]
+    },
+    "phase_4": {
+      "title": "Frontend Development",
+      "tasks": [
+        "Create React components for dropdowns",
+        "Implement registration forms",
+        "Add notification system"
+      ]
+    },
+    "phase_5": {
+      "title": "Data Migration and Testing",
+      "tasks": [
+        "Migrate existing student data",
+        "Test registration workflows",
+        "Validate business logic integrity",
+        "Greek localization testing"
+      ]
+    }
+  },
+  "deployment_architecture": {
+    "recommended_structure": {
+      "backend": "FastAPI application with SQLAlchemy ORM",
+      "database": "MySQL or PostgreSQL with connection pooling",
+      "frontend": "React SPA served by nginx",
+      "authentication": "CAS integration with session storage",
+      "caching": "Redis for session storage and query caching",
+      "monitoring": "Application logging and error tracking",
+      "deployment": "Docker containers with docker-compose"
+    },
+    "environment_configuration": {
+      "database_url": "MySQL connection string",
+      "cas_server_url": "CAS authentication server endpoint",
+      "cas_service_url": "Application callback URL",
+      "secret_key": "Session encryption key",
+      "debug_mode": "Development/production flag"
+    }
+  },
+  "testing_requirements": {
+    "unit_tests": [
+      "Database model operations",
+      "Business logic validation",
+      "CAS authentication processing",
+      "Registration workflow logic"
+    ],
+    "integration_tests": [
+      "API endpoint functionality",
+      "Database transaction integrity",
+      "CAS authentication flow",
+      "Cascading dropdown behavior"
+    ],
+    "user_acceptance_tests": [
+      "Complete registration workflow",
+      "Greek localization accuracy",
+      "Error message display",
+      "Professor contact information"
+    ]
+  },
+  "localization_requirements": {
+    "language": "Greek (el-GR)",
+    "error_messages": "All error messages must be in Greek",
+    "ui_labels": "Interface elements in Greek",
+    "date_formats": "dd/MM/yyyy format for dates",
+    "academic_terms": "Preserve Greek academic terminology",
+    "examples": {
+      "lab": "����������",
+      "course": "������",
+      "semester": "�������",
+      "group": "�����",
+      "student": "��������",
+      "professor": "���������",
+      "registration": "�������"
+    }
+  }
+}
