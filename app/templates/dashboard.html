@@ -10,7 +10,7 @@
         body {
             display: flex;
             min-height: 100vh;
-            padding-top: 50px; /* Προσθέτω padding στην κορυφή του body για τα fixed στοιχεία */
+            padding-top: 50px;
         }
         .sidebar {
             width: 250px;
@@ -20,8 +20,9 @@
             position: fixed;
             height: 100%;
             z-index: 1000;
-            top: 50px; /* Sidebar starts below the fixed top bar */
-            padding-top: 10px; /* Add some padding for content below title */
+            top: 50px;
+            padding-top: 10px;
+            overflow-y: auto;
         }
         .sidebar.collapsed {
             margin-left: -250px;
@@ -38,13 +39,13 @@
             background: rgba(255,255,255,.2);
         }
         .main-content {
-            margin-left: 250px; /* Default margin when sidebar is open */
+            margin-left: 250px;
             padding: 20px;
             transition: all 0.3s;
             width: 100%;
         }
         .main-content.expanded {
-            margin-left: 0; /* No margin when sidebar is collapsed */
+            margin-left: 0;
         }
         .toggle-btn {
             background: #343a40;
@@ -53,28 +54,25 @@
             padding: 10px;
             border-radius: 5px;
         }
-        /* Style for the fixed container of top buttons */
         .top-fixed-buttons {
             position: fixed;
             top: 0;
             left: 0;
-            right: 0; /* Extend to the right to potentially center content */
+            right: 0;
             z-index: 1100;
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 10px; /* Add padding around buttons */
-            background-color: #fff; /* Add background to blend with light mode */
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Optional shadow */
+            padding: 10px;
+            background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
-        /* Style for the title in the fixed top bar */
         .top-bar-title h4 {
-            color: #000; /* Default color for light mode */
-            margin: 0; /* Remove default margin */
+            color: #000;
+            margin: 0;
         }
-        /* Style for the title in dark mode */
         body.bg-dark .top-bar-title h4 {
-            color: #fff; /* White color for dark mode */
+            color: #fff;
         }
         .tab-content {
             padding: 20px;
@@ -84,21 +82,82 @@
             border-radius: 12px;
             box-shadow: 0 2px 12px rgba(0,0,0,0.07);
         }
-        .bg-flat-color-4 { background: #e57373 !important; }
-        .bg-flat-color-5 { background: #66bb6a !important; }
-        .dropdown .form-select, .dropdown .btn {
-            width: 300px;
+        
+        /* Registration Form Styles */
+        .registration-card {
+            border: 2px solid #0d6efd;
+            border-radius: 12px;
         }
-        .progress-bar-custom {
-            height: 15px;
-            background-color: #fff !important;
+        .registration-card .card-header {
+            background: linear-gradient(135deg, #0d6efd 0%, #0056b3 100%);
+            color: white;
+            border-radius: 10px 10px 0 0;
         }
-        .text-shadow {
-            text-shadow: 1px 1px 2px #00000033;
+        .dropdown-cascade {
+            min-width: 100%;
+        }
+        .group-option {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .group-option .occupancy {
+            font-size: 0.85em;
+            color: #6c757d;
+        }
+        .group-option.full {
+            color: #dc3545;
+            text-decoration: line-through;
+        }
+        
+        /* Enrollment Status Badge */
+        .status-badge {
+            font-size: 0.9em;
+            padding: 5px 10px;
+        }
+        .status-in-progress { background-color: #ffc107; color: #000; }
+        .status-completed { background-color: #28a745; color: #fff; }
+        .status-failed { background-color: #dc3545; color: #fff; }
+        
+        /* Progress bar for occupancy */
+        .occupancy-bar {
+            height: 8px;
+            border-radius: 4px;
+        }
+        .occupancy-text {
+            font-size: 0.85em;
+            color: #6c757d;
+        }
+        
+        /* Alert animations */
+        .alert-dismissible {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        /* My Enrollments Card */
+        .enrollment-card {
+            border-left: 4px solid #0d6efd;
+            transition: transform 0.2s;
+        }
+        .enrollment-card:hover {
+            transform: translateX(5px);
+        }
+        .enrollment-card.has-absences {
+            border-left-color: #ffc107;
+        }
+        
+        /* Professor Info Card */
+        .professor-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
         }
     </style>
 </head>
 <body>
+    <!-- Top Bar -->
     <div class="top-fixed-buttons">
         <button class="toggle-btn" id="sidebarToggle">
             <i class="fas fa-bars"></i>
@@ -106,22 +165,25 @@
         <button class="btn btn-outline-secondary" id="themeToggle">
             <i class="fas fa-moon"></i> <span class="d-none d-md-inline">Dark/Light</span>
         </button>
-        <!-- Νέο Home button -->
         <button class="btn btn-primary goto-tab" data-tab="#dashboard">
             <i class="fas fa-home me-1"></i> <span class="d-none d-md-inline">Αρχική</span>
         </button>
-         <div class="top-bar-title" style="margin-left: auto; margin-right: auto;"><h4>Σύστημα Εργαστηρίων</h4></div> <!-- Κεντρικός τίτλος στην μπάρα -->
+        <div class="top-bar-title" style="margin-left: auto; margin-right: auto;">
+            <h4>Σύστημα Εργαστηρίων <small class="text-muted fs-6">{{ academic_year }}-{{ academic_year + 1 }}</small></h4>
+        </div>
     </div>
+
+    <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="p-3">
-            <h4>Σύστημα Εργαστηρίων</h4> <!-- Τίτλος μέσα στο sidebar, ορατός όταν ανοιχτό -->
+            <h5>Σύστημα Εργαστηρίων</h5>
             
             <!-- User Info Section -->
             <div class="mt-3 p-2" style="background: rgba(255,255,255,0.1); border-radius: 5px;">
-                <small class="text-muted">Logged in as:</small>
+                <small class="text-muted">Συνδεδεμένος:</small>
                 <div class="fw-bold">{{ name }}</div>
                 <div class="badge bg-{% if role == 'student' %}success{% elif role == 'professor' %}primary{% elif role == 'admin' %}danger{% else %}secondary{% endif %}">
-                    {{ role|title }}
+                    {% if role == 'student' %}Φοιτητής{% elif role == 'professor' %}Καθηγητής{% elif role == 'admin' %}Διαχειριστής{% else %}{{ role|title }}{% endif %}
                 </div>
                 {% if AUTH_MODE == 'dev' %}
                 <div class="mt-2">
@@ -135,16 +197,29 @@
             <!-- Logout Button -->
             <div class="mt-3">
                 <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm w-100">
-                    <i class="fas fa-sign-out-alt"></i> Logout
+                    <i class="fas fa-sign-out-alt"></i> Αποσύνδεση
                 </a>
             </div>
         </div>
+        
         <ul class="nav flex-column">
             <li class="nav-item">
                 <a class="nav-link active" href="#dashboard" data-bs-toggle="tab">
-                    <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                    <i class="fas fa-tachometer-alt me-2"></i>Αρχική
                 </a>
             </li>
+            {% if role == 'student' %}
+            <li class="nav-item">
+                <a class="nav-link" href="#registration" data-bs-toggle="tab">
+                    <i class="fas fa-plus-circle me-2"></i>Εγγραφή σε Εργαστήριο
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#my-enrollments" data-bs-toggle="tab">
+                    <i class="fas fa-clipboard-check me-2"></i>Οι Εγγραφές μου
+                </a>
+            </li>
+            {% endif %}
             <li class="nav-item">
                 <a class="nav-link" href="#labs" data-bs-toggle="tab">
                     <i class="fas fa-flask me-2"></i>Εργαστήρια
@@ -155,16 +230,19 @@
                     <i class="fas fa-users me-2"></i>Τμήματα
                 </a>
             </li>
+            {% if role in ['professor', 'admin'] %}
             <li class="nav-item">
                 <a class="nav-link" href="#students" data-bs-toggle="tab">
                     <i class="fas fa-user-graduate me-2"></i>Φοιτητές
                 </a>
             </li>
+            {% endif %}
             <li class="nav-item">
                 <a class="nav-link" href="#professors" data-bs-toggle="tab">
                     <i class="fas fa-user-tie me-2"></i>Υπεύθυνοι
                 </a>
             </li>
+            {% if role in ['professor', 'admin'] %}
             <li class="nav-item">
                 <a class="nav-link" href="#registrations" data-bs-toggle="tab">
                     <i class="fas fa-clipboard-list me-2"></i>Εγγραφές
@@ -175,85 +253,271 @@
                     <i class="fas fa-calendar-times me-2"></i>Απουσίες
                 </a>
             </li>
+            {% endif %}
         </ul>
     </div>
+
+    <!-- Main Content -->
     <div class="main-content" id="mainContent">
+        <!-- Global Alert Container -->
+        <div id="alertContainer"></div>
+        
         <div class="tab-content">
+            <!-- Dashboard Tab -->
             <div class="tab-pane fade show active" id="dashboard">
-                <h2 class="mb-4">Dashboard</h2>
+                <h2 class="mb-4">
+                    <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                </h2>
+                
+                {% if role == 'student' %}
+                <!-- Student Quick Actions -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card registration-card h-100">
+                            <div class="card-header">
+                                <i class="fas fa-plus-circle me-2"></i>Γρήγορη Εγγραφή
+                            </div>
+                            <div class="card-body">
+                                <p>Εγγραφείτε σε νέο εργαστήριο επιλέγοντας εξάμηνο, μάθημα και τμήμα.</p>
+                                <button class="btn btn-primary goto-tab" data-tab="#registration">
+                                    <i class="fas fa-arrow-right me-1"></i>Εγγραφή τώρα
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header bg-success text-white">
+                                <i class="fas fa-clipboard-check me-2"></i>Οι Εγγραφές μου
+                            </div>
+                            <div class="card-body">
+                                <p>Δείτε τις τρέχουσες εγγραφές σας και τις απουσίες.</p>
+                                <button class="btn btn-success goto-tab" data-tab="#my-enrollments">
+                                    <i class="fas fa-eye me-1"></i>Προβολή
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Dashboard Cards -->
                 <div class="row row-cols-1 row-cols-md-3 g-4">
                     <div class="col">
                         <div class="card h-100 text-center">
                             <div class="card-body">
-                                <i class="fas fa-flask fa-2x mb-2"></i>
+                                <i class="fas fa-flask fa-2x mb-2 text-primary"></i>
                                 <h5 class="card-title">Εργαστήρια</h5>
-                                <p class="card-text">Διαχείριση και επισκόπηση εργαστηρίων.</p>
-                                <button class="btn btn-primary goto-tab" data-tab="#labs">Μετάβαση</button>
+                                <p class="card-text">{{ labs|length }} διαθέσιμα εργαστήρια</p>
+                                <button class="btn btn-outline-primary goto-tab" data-tab="#labs">Προβολή</button>
                             </div>
                         </div>
                     </div>
                     <div class="col">
                         <div class="card h-100 text-center">
                             <div class="card-body">
-                                <i class="fas fa-users fa-2x mb-2"></i>
+                                <i class="fas fa-users fa-2x mb-2 text-info"></i>
                                 <h5 class="card-title">Τμήματα</h5>
-                                <p class="card-text">Προβολή και διαχείριση τμημάτων.</p>
-                                <button class="btn btn-primary goto-tab" data-tab="#groups">Μετάβαση</button>
+                                <p class="card-text">{{ groups|length }} ενεργά τμήματα</p>
+                                <button class="btn btn-outline-info goto-tab" data-tab="#groups">Προβολή</button>
                             </div>
                         </div>
                     </div>
                     <div class="col">
                         <div class="card h-100 text-center">
                             <div class="card-body">
-                                <i class="fas fa-user-graduate fa-2x mb-2"></i>
-                                <h5 class="card-title">Φοιτητές</h5>
-                                <p class="card-text">Λίστα και στοιχεία φοιτητών.</p>
-                                <button class="btn btn-primary goto-tab" data-tab="#students">Μετάβαση</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col">
-                        <div class="card h-100 text-center">
-                            <div class="card-body">
-                                <i class="fas fa-user-tie fa-2x mb-2"></i>
+                                <i class="fas fa-user-tie fa-2x mb-2 text-secondary"></i>
                                 <h5 class="card-title">Υπεύθυνοι</h5>
-                                <p class="card-text">Υπεύθυνοι εργαστηρίων και στοιχεία επικοινωνίας.</p>
-                                <button class="btn btn-primary goto-tab" data-tab="#professors">Μετάβαση</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col">
-                        <div class="card h-100 text-center">
-                            <div class="card-body">
-                                <i class="fas fa-clipboard-list fa-2x mb-2"></i>
-                                <h5 class="card-title">Εγγραφές</h5>
-                                <p class="card-text">Διαχείριση εγγραφών φοιτητών.</p>
-                                <button class="btn btn-primary goto-tab" data-tab="#registrations">Μετάβαση</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col">
-                        <div class="card h-100 text-center">
-                            <div class="card-body">
-                                <i class="fas fa-calendar-times fa-2x mb-2"></i>
-                                <h5 class="card-title">Απουσίες</h5>
-                                <p class="card-text">Παρακολούθηση απουσιών φοιτητών.</p>
-                                <button class="btn btn-primary goto-tab" data-tab="#absences">Μετάβαση</button>
+                                <p class="card-text">{{ professors|length }} καθηγητές</p>
+                                <button class="btn btn-outline-secondary goto-tab" data-tab="#professors">Προβολή</button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {% if role == 'student' %}
+            <!-- Registration Tab (Students Only) -->
+            <div class="tab-pane fade" id="registration">
+                <h2 class="mb-4">
+                    <i class="fas fa-plus-circle me-2"></i>Εγγραφή σε Εργαστήριο
+                </h2>
+                
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="card registration-card">
+                            <div class="card-header">
+                                <i class="fas fa-edit me-2"></i>Φόρμα Εγγραφής
+                            </div>
+                            <div class="card-body">
+                                <!-- Registration Alert -->
+                                <div id="registrationAlert"></div>
+                                
+                                <!-- Cascading Dropdowns -->
+                                <form id="registrationForm">
+                                    <!-- Semester -->
+                                    <div class="mb-3">
+                                        <label for="semesterSelect" class="form-label">
+                                            <i class="fas fa-calendar me-1"></i>Εξάμηνο
+                                        </label>
+                                        <select class="form-select dropdown-cascade" id="semesterSelect" required>
+                                            <option value="">-- Επιλέξτε Εξάμηνο --</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <!-- Course -->
+                                    <div class="mb-3">
+                                        <label for="courseSelect" class="form-label">
+                                            <i class="fas fa-book me-1"></i>Μάθημα
+                                        </label>
+                                        <select class="form-select dropdown-cascade" id="courseSelect" disabled required>
+                                            <option value="">-- Επιλέξτε Μάθημα --</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <!-- Lab -->
+                                    <div class="mb-3">
+                                        <label for="labSelect" class="form-label">
+                                            <i class="fas fa-flask me-1"></i>Εργαστήριο
+                                        </label>
+                                        <select class="form-select dropdown-cascade" id="labSelect" disabled required>
+                                            <option value="">-- Επιλέξτε Εργαστήριο --</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <!-- Lab Info -->
+                                    <div id="labInfo" class="alert alert-info d-none">
+                                        <div class="d-flex justify-content-between">
+                                            <span><i class="fas fa-info-circle me-1"></i><span id="labName"></span></span>
+                                            <span><i class="fas fa-clock me-1"></i>Λήξη εγγραφών: <strong id="regLimit"></strong></span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Current Enrollment Status -->
+                                    <div id="enrollmentStatus" class="alert d-none"></div>
+                                    
+                                    <!-- Group -->
+                                    <div class="mb-3">
+                                        <label for="groupSelect" class="form-label">
+                                            <i class="fas fa-users me-1"></i>Τμήμα
+                                        </label>
+                                        <select class="form-select dropdown-cascade" id="groupSelect" disabled required>
+                                            <option value="">-- Επιλέξτε Τμήμα --</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <!-- Group Occupancy -->
+                                    <div id="groupOccupancy" class="mb-3 d-none">
+                                        <label class="form-label">Πληρότητα Τμήματος</label>
+                                        <div class="progress occupancy-bar">
+                                            <div id="occupancyBar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                        <div class="occupancy-text mt-1">
+                                            <span id="occupancyText"></span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Hidden fields for change group -->
+                                    <input type="hidden" id="currentGroupId" value="">
+                                    <input type="hidden" id="isChangeMode" value="false">
+                                    
+                                    <!-- Submit Button -->
+                                    <div class="d-grid gap-2">
+                                        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" disabled>
+                                            <i class="fas fa-check me-1"></i>
+                                            <span id="submitBtnText">Εγγραφή</span>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Professor Info Sidebar -->
+                    <div class="col-lg-4">
+                        <div id="professorInfo" class="card professor-card d-none">
+                            <div class="card-header">
+                                <i class="fas fa-user-tie me-2"></i>Υπεύθυνος Τμήματος
+                            </div>
+                            <div class="card-body">
+                                <div id="professorDetails"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- My Enrollments Tab (Students Only) -->
+            <div class="tab-pane fade" id="my-enrollments">
+                <h2 class="mb-4">
+                    <i class="fas fa-clipboard-check me-2"></i>Οι Εγγραφές μου
+                </h2>
+                
+                {% if student_enrollments %}
+                <div class="row">
+                    {% for enrollment in student_enrollments %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card enrollment-card {% if enrollment.absences != '-' %}has-absences{% endif %}">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <h5 class="card-title mb-1">{{ enrollment.lab_name }}</h5>
+                                    <span class="badge status-badge 
+                                        {% if enrollment.status == 'Σε Εξέλιξη' %}status-in-progress
+                                        {% elif enrollment.status == 'Ολοκληρωμένο' %}status-completed
+                                        {% elif enrollment.status == 'Αποτυχία' %}status-failed
+                                        {% endif %}">
+                                        {{ enrollment.status }}
+                                    </span>
+                                </div>
+                                <p class="text-muted mb-2">
+                                    <i class="fas fa-clock me-1"></i>{{ enrollment.group_daytime }}
+                                </p>
+                                <div class="d-flex justify-content-between">
+                                    <span>
+                                        <i class="fas fa-calendar-times me-1"></i>
+                                        Απουσίες: <strong>{{ enrollment.absences }}</strong>
+                                    </span>
+                                    {% if enrollment.grade > 0 %}
+                                    <span>
+                                        <i class="fas fa-star me-1"></i>
+                                        Βαθμός: <strong>{{ enrollment.grade }}</strong>
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                {% if enrollment.status == 'Σε Εξέλιξη' %}
+                                <hr>
+                                <button class="btn btn-sm btn-outline-primary change-group-btn" 
+                                        data-lab-id="{{ enrollment.lab_id }}" 
+                                        data-group-id="{{ enrollment.group_id }}">
+                                    <i class="fas fa-exchange-alt me-1"></i>Αλλαγή Τμήματος
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Δεν έχετε εγγραφεί σε κανένα εργαστήριο για το ακαδημαϊκό έτος {{ academic_year }}-{{ academic_year + 1 }}.
+                    <a href="#" class="alert-link goto-tab" data-tab="#registration">Εγγραφείτε τώρα!</a>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Labs Tab -->
             <div class="tab-pane fade" id="labs">
-                <h2>Εργαστήρια</h2>
+                <h2><i class="fas fa-flask me-2"></i>Εργαστήρια</h2>
                 <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
                             <tr>
                                 <th>ID</th>
                                 <th>Όνομα</th>
                                 <th>Περιγραφή</th>
-                                <th>Μέγιστος Αριθμός Χρηστών</th>
+                                <th>Μέγ. Φοιτητές</th>
                                 <th>Όριο Εγγραφών</th>
                             </tr>
                         </thead>
@@ -261,9 +525,9 @@
                         {% for lab in labs %}
                             <tr>
                                 <td>{{ lab.lab_id }}</td>
-                                <td>{{ lab.name }}</td>
+                                <td><strong>{{ lab.name }}</strong></td>
                                 <td>{{ lab.description }}</td>
-                                <td>{{ lab.maxusers }}</td>
+                                <td><span class="badge bg-info">{{ lab.maxusers }}</span></td>
                                 <td>{{ lab.reg_limit }}</td>
                             </tr>
                         {% endfor %}
@@ -271,38 +535,57 @@
                     </table>
                 </div>
             </div>
+
+            <!-- Groups Tab -->
             <div class="tab-pane fade" id="groups">
-                <h2>Τμήματα</h2>
+                <h2><i class="fas fa-users me-2"></i>Τμήματα</h2>
                 <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
                             <tr>
                                 <th>ID</th>
                                 <th>Ώρα/Μέρα</th>
                                 <th>Έτος</th>
                                 <th>Πληρότητα</th>
+                                <th>Διαθέσιμες Θέσεις</th>
                             </tr>
                         </thead>
                         <tbody>
                         {% for group in groups %}
-                            <tr>
+                            <tr class="{% if group.is_full %}table-danger{% endif %}">
                                 <td>{{ group.group_id }}</td>
                                 <td>{{ group.daytime }}</td>
                                 <td>{{ group.year }}</td>
-                                <td>{{ group.occupancy_percentage|default('0')|round(0) }}%</td>
+                                <td>
+                                    <div class="progress occupancy-bar" style="width: 100px;">
+                                        <div class="progress-bar {% if group.occupancy_percentage >= 90 %}bg-danger{% elif group.occupancy_percentage >= 70 %}bg-warning{% else %}bg-success{% endif %}" 
+                                             style="width: {{ group.occupancy_percentage }}%"></div>
+                                    </div>
+                                    <small>{{ group.occupancy_percentage|round(0) }}%</small>
+                                </td>
+                                <td>
+                                    {% if group.is_full %}
+                                    <span class="badge bg-danger">Πλήρες</span>
+                                    {% else %}
+                                    <span class="badge bg-success">{{ group.available_spots }}</span>
+                                    {% endif %}
+                                </td>
                             </tr>
                         {% endfor %}
                         </tbody>
                     </table>
                 </div>
             </div>
+
+            {% if role in ['professor', 'admin'] %}
+            <!-- Students Tab (Professors/Admins Only) -->
             <div class="tab-pane fade" id="students">
-                <h2>Φοιτητές</h2>
+                <h2><i class="fas fa-user-graduate me-2"></i>Φοιτητές</h2>
                 <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
                             <tr>
-                                <th>ID</th>
+                                <th>Α.Μ.</th>
                                 <th>Όνομα</th>
                                 <th>Email</th>
                                 <th>Εξάμηνο</th>
@@ -314,47 +597,49 @@
                                 <td>{{ student.am }}</td>
                                 <td>{{ student.name }}</td>
                                 <td>{{ student.email }}</td>
-                                <td>{{ student.semester }}</td>
+                                <td><span class="badge bg-secondary">{{ student.semester }}ο</span></td>
                             </tr>
                         {% endfor %}
                         </tbody>
                     </table>
                 </div>
             </div>
+            {% endif %}
+
+            <!-- Professors Tab -->
             <div class="tab-pane fade" id="professors">
-                <h2>Υπεύθυνοι</h2>
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Όνομα</th>
-                                <th>Email</th>
-                                <th>Γραφείο</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        {% for prof in professors %}
-                            <tr>
-                                <td>{{ prof.prof_id }}</td>
-                                <td>{{ prof.name }}</td>
-                                <td>{{ prof.email }}</td>
-                                <td>{{ prof.office }}</td>
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
+                <h2><i class="fas fa-user-tie me-2"></i>Υπεύθυνοι Εργαστηρίων</h2>
+                <div class="row">
+                    {% for prof in professors %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ prof.name }}</h5>
+                                <h6 class="card-subtitle mb-2 text-muted">{{ prof.status }}</h6>
+                                <p class="card-text">
+                                    <i class="fas fa-door-open me-1"></i>{{ prof.office }}<br>
+                                    <i class="fas fa-envelope me-1"></i><a href="mailto:{{ prof.email }}">{{ prof.email }}</a><br>
+                                    <i class="fas fa-phone me-1"></i>{{ prof.tel }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
             </div>
+
+            {% if role in ['professor', 'admin'] %}
+            <!-- Registrations Tab -->
             <div class="tab-pane fade" id="registrations">
-                <h2>Εγγραφές</h2>
+                <h2><i class="fas fa-clipboard-list me-2"></i>Εγγραφές</h2>
                 <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
                             <tr>
                                 <th>Φοιτητής</th>
                                 <th>Εργαστήριο</th>
-                                <th>Ημερομηνία Εγγραφής</th>
+                                <th>Κατάσταση</th>
+                                <th>Ημερομηνία</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -362,6 +647,15 @@
                             <tr>
                                 <td>{{ reg.am }}</td>
                                 <td>{{ reg.lab_id }}</td>
+                                <td>
+                                    <span class="badge 
+                                        {% if reg.status == 'Σε Εξέλιξη' %}bg-warning text-dark
+                                        {% elif reg.status == 'Ολοκληρωμένο' %}bg-success
+                                        {% elif reg.status == 'Αποτυχία' %}bg-danger
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ reg.status }}
+                                    </span>
+                                </td>
                                 <td>{{ reg.reg_month }}/{{ reg.reg_year }}</td>
                             </tr>
                         {% endfor %}
@@ -369,15 +663,17 @@
                     </table>
                 </div>
             </div>
+
+            <!-- Absences Tab -->
             <div class="tab-pane fade" id="absences">
-                <h2>Απουσίες</h2>
+                <h2><i class="fas fa-calendar-times me-2"></i>Απουσίες</h2>
                 <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
                             <tr>
                                 <th>Φοιτητής</th>
                                 <th>Τμήμα</th>
-                                <th>Αριθμός Απουσιών</th>
+                                <th>Ημερομηνίες Απουσιών</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -392,40 +688,467 @@
                     </table>
                 </div>
             </div>
+            {% endif %}
         </div>
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // =============================================================================
+        // UTILITY FUNCTIONS
+        // =============================================================================
+        
+        function showAlert(containerId, type, message, autoDismiss = true) {
+            const container = document.getElementById(containerId);
+            const alertId = 'alert-' + Date.now();
+            
+            const alertHtml = `
+                <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            
+            container.innerHTML = alertHtml;
+            
+            if (autoDismiss) {
+                setTimeout(() => {
+                    const alert = document.getElementById(alertId);
+                    if (alert) {
+                        alert.classList.remove('show');
+                        setTimeout(() => alert.remove(), 150);
+                    }
+                }, 5000);
+            }
+        }
+        
+        function resetSelect(selectId, placeholder) {
+            const select = document.getElementById(selectId);
+            select.innerHTML = `<option value="">${placeholder}</option>`;
+            select.disabled = true;
+        }
+        
+        // =============================================================================
+        // CASCADING DROPDOWNS
+        // =============================================================================
+        
+        let selectedLabId = null;
+        let selectedGroupId = null;
+        let registrationOpen = false;
+        
+        // Load semesters on page load
+        document.addEventListener('DOMContentLoaded', async function() {
+            {% if role == 'student' %}
+            await loadSemesters();
+            {% endif %}
+        });
+        
+        async function loadSemesters() {
+            try {
+                const response = await fetch('/api/semesters');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const select = document.getElementById('semesterSelect');
+                    select.innerHTML = '<option value="">-- Επιλέξτε Εξάμηνο --</option>';
+                    
+                    data.data.forEach(semester => {
+                        const option = document.createElement('option');
+                        option.value = semester.id;
+                        option.textContent = semester.name;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading semesters:', error);
+            }
+        }
+        
+        // Semester change -> Load courses
+        document.getElementById('semesterSelect')?.addEventListener('change', async function() {
+            const semester = this.value;
+            
+            // Reset downstream selects
+            resetSelect('courseSelect', '-- Επιλέξτε Μάθημα --');
+            resetSelect('labSelect', '-- Επιλέξτε Εργαστήριο --');
+            resetSelect('groupSelect', '-- Επιλέξτε Τμήμα --');
+            document.getElementById('labInfo')?.classList.add('d-none');
+            document.getElementById('enrollmentStatus')?.classList.add('d-none');
+            document.getElementById('groupOccupancy')?.classList.add('d-none');
+            document.getElementById('professorInfo')?.classList.add('d-none');
+            document.getElementById('submitBtn').disabled = true;
+            
+            if (!semester) return;
+            
+            try {
+                const response = await fetch(`/api/courses/${semester}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const select = document.getElementById('courseSelect');
+                    select.innerHTML = '<option value="">-- Επιλέξτε Μάθημα --</option>';
+                    
+                    data.data.forEach(course => {
+                        const option = document.createElement('option');
+                        option.value = course.course_id;
+                        option.textContent = course.name;
+                        select.appendChild(option);
+                    });
+                    
+                    select.disabled = false;
+                }
+            } catch (error) {
+                console.error('Error loading courses:', error);
+            }
+        });
+        
+        // Course change -> Load labs
+        document.getElementById('courseSelect')?.addEventListener('change', async function() {
+            const courseId = this.value;
+            
+            // Reset downstream selects
+            resetSelect('labSelect', '-- Επιλέξτε Εργαστήριο --');
+            resetSelect('groupSelect', '-- Επιλέξτε Τμήμα --');
+            document.getElementById('labInfo')?.classList.add('d-none');
+            document.getElementById('enrollmentStatus')?.classList.add('d-none');
+            document.getElementById('groupOccupancy')?.classList.add('d-none');
+            document.getElementById('professorInfo')?.classList.add('d-none');
+            document.getElementById('submitBtn').disabled = true;
+            
+            if (!courseId) return;
+            
+            try {
+                const response = await fetch(`/api/labs/${courseId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const select = document.getElementById('labSelect');
+                    select.innerHTML = '<option value="">-- Επιλέξτε Εργαστήριο --</option>';
+                    
+                    data.data.forEach(lab => {
+                        const option = document.createElement('option');
+                        option.value = lab.lab_id;
+                        option.textContent = lab.name;
+                        select.appendChild(option);
+                    });
+                    
+                    select.disabled = false;
+                }
+            } catch (error) {
+                console.error('Error loading labs:', error);
+            }
+        });
+        
+        // Lab change -> Load groups and check enrollment status
+        document.getElementById('labSelect')?.addEventListener('change', async function() {
+            const labId = this.value;
+            selectedLabId = labId;
+            
+            // Reset downstream selects
+            resetSelect('groupSelect', '-- Επιλέξτε Τμήμα --');
+            document.getElementById('groupOccupancy')?.classList.add('d-none');
+            document.getElementById('professorInfo')?.classList.add('d-none');
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('currentGroupId').value = '';
+            document.getElementById('isChangeMode').value = 'false';
+            
+            if (!labId) {
+                document.getElementById('labInfo')?.classList.add('d-none');
+                document.getElementById('enrollmentStatus')?.classList.add('d-none');
+                return;
+            }
+            
+            try {
+                // Load groups
+                const groupsResponse = await fetch(`/api/groups/${labId}`);
+                const groupsData = await groupsResponse.json();
+                
+                // Load enrollment status
+                const statusResponse = await fetch(`/api/student/enrollment-status/${labId}`);
+                const statusData = await statusResponse.json();
+                
+                // Update lab info
+                const labInfo = document.getElementById('labInfo');
+                document.getElementById('labName').textContent = groupsData.lab_name || '';
+                document.getElementById('regLimit').textContent = groupsData.reg_limit || 'Δεν έχει οριστεί';
+                labInfo.classList.remove('d-none');
+                
+                registrationOpen = groupsData.registration_open;
+                
+                // Update enrollment status
+                const enrollmentStatus = document.getElementById('enrollmentStatus');
+                if (statusData.success) {
+                    if (statusData.current_group) {
+                        // Already enrolled
+                        enrollmentStatus.className = 'alert alert-warning';
+                        enrollmentStatus.innerHTML = `
+                            <i class="fas fa-info-circle me-2"></i>
+                            Είστε ήδη εγγεγραμμένος στο τμήμα: <strong>${statusData.current_group.daytime}</strong>
+                            ${statusData.can_change_group ? '<br><small>Μπορείτε να αλλάξετε τμήμα επιλέγοντας νέο παρακάτω.</small>' : ''}
+                        `;
+                        enrollmentStatus.classList.remove('d-none');
+                        
+                        document.getElementById('currentGroupId').value = statusData.current_group.group_id;
+                        document.getElementById('isChangeMode').value = 'true';
+                        document.getElementById('submitBtnText').textContent = 'Αλλαγή Τμήματος';
+                    } else if (statusData.lab_status && statusData.lab_status.status === 'Αποτυχία') {
+                        enrollmentStatus.className = 'alert alert-info';
+                        enrollmentStatus.innerHTML = `
+                            <i class="fas fa-redo me-2"></i>
+                            Επανεγγραφή μετά από αποτυχία. Επιλέξτε τμήμα για να εγγραφείτε ξανά.
+                        `;
+                        enrollmentStatus.classList.remove('d-none');
+                        document.getElementById('submitBtnText').textContent = 'Επανεγγραφή';
+                    } else {
+                        enrollmentStatus.classList.add('d-none');
+                        document.getElementById('submitBtnText').textContent = 'Εγγραφή';
+                    }
+                    
+                    if (!groupsData.registration_open) {
+                        enrollmentStatus.className = 'alert alert-danger';
+                        enrollmentStatus.innerHTML = `
+                            <i class="fas fa-lock me-2"></i>
+                            ${groupsData.registration_message}
+                        `;
+                        enrollmentStatus.classList.remove('d-none');
+                    }
+                }
+                
+                // Populate groups
+                if (groupsData.success) {
+                    const select = document.getElementById('groupSelect');
+                    select.innerHTML = '<option value="">-- Επιλέξτε Τμήμα --</option>';
+                    
+                    groupsData.data.forEach(group => {
+                        const option = document.createElement('option');
+                        option.value = group.group_id;
+                        
+                        const occupancy = group.occupancy;
+                        const isFull = occupancy.is_full;
+                        const isCurrentGroup = statusData.current_group && statusData.current_group.group_id == group.group_id;
+                        
+                        option.textContent = `${group.daytime} (${occupancy.current}/${occupancy.max})`;
+                        
+                        if (isFull && !isCurrentGroup) {
+                            option.disabled = true;
+                            option.textContent += ' - ΠΛΗΡΕΣ';
+                        }
+                        if (isCurrentGroup) {
+                            option.textContent += ' - Τρέχον';
+                        }
+                        
+                        select.appendChild(option);
+                    });
+                    
+                    select.disabled = !registrationOpen;
+                }
+            } catch (error) {
+                console.error('Error loading groups:', error);
+            }
+        });
+        
+        // Group change -> Update occupancy and professor
+        document.getElementById('groupSelect')?.addEventListener('change', async function() {
+            const groupId = this.value;
+            selectedGroupId = groupId;
+            
+            const currentGroupId = document.getElementById('currentGroupId').value;
+            const isChangeMode = document.getElementById('isChangeMode').value === 'true';
+            
+            if (!groupId) {
+                document.getElementById('groupOccupancy')?.classList.add('d-none');
+                document.getElementById('professorInfo')?.classList.add('d-none');
+                document.getElementById('submitBtn').disabled = true;
+                return;
+            }
+            
+            // Check if trying to select current group
+            if (isChangeMode && groupId == currentGroupId) {
+                document.getElementById('submitBtn').disabled = true;
+                showAlert('registrationAlert', 'warning', 'Είστε ήδη εγγεγραμμένος σε αυτό το τμήμα.');
+                return;
+            }
+            
+            // Get group data from API response (stored earlier)
+            try {
+                const response = await fetch(`/api/groups/${selectedLabId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const group = data.data.find(g => g.group_id == groupId);
+                    
+                    if (group) {
+                        // Update occupancy bar
+                        const occupancy = group.occupancy;
+                        const occupancyDiv = document.getElementById('groupOccupancy');
+                        const bar = document.getElementById('occupancyBar');
+                        const text = document.getElementById('occupancyText');
+                        
+                        bar.style.width = occupancy.percentage + '%';
+                        bar.className = 'progress-bar ' + 
+                            (occupancy.percentage >= 90 ? 'bg-danger' : 
+                             occupancy.percentage >= 70 ? 'bg-warning' : 'bg-success');
+                        
+                        text.textContent = `${occupancy.current}/${occupancy.max} θέσεις (${occupancy.available} διαθέσιμες)`;
+                        occupancyDiv.classList.remove('d-none');
+                        
+                        // Enable submit if not full
+                        document.getElementById('submitBtn').disabled = occupancy.is_full;
+                        
+                        if (occupancy.is_full) {
+                            showAlert('registrationAlert', 'danger', 'Το τμήμα είναι πλήρες.');
+                        }
+                    }
+                }
+                
+                // Load professor info
+                const profResponse = await fetch(`/api/groups/${groupId}/professor`);
+                const profData = await profResponse.json();
+                
+                if (profData.success && profData.data.length > 0) {
+                    const profDiv = document.getElementById('professorInfo');
+                    const detailsDiv = document.getElementById('professorDetails');
+                    
+                    let html = '';
+                    profData.data.forEach(prof => {
+                        html += `
+                            <h6>${prof.name}</h6>
+                            <p class="text-muted mb-2">${prof.status}</p>
+                            <p class="mb-1"><i class="fas fa-door-open me-2"></i>${prof.office}</p>
+                            <p class="mb-1"><i class="fas fa-phone me-2"></i>${prof.tel}</p>
+                            <p class="mb-0"><i class="fas fa-envelope me-2"></i><a href="mailto:${prof.email}">${prof.email}</a></p>
+                        `;
+                    });
+                    
+                    detailsDiv.innerHTML = html;
+                    profDiv.classList.remove('d-none');
+                } else {
+                    document.getElementById('professorInfo')?.classList.add('d-none');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
+        
+        // =============================================================================
+        // FORM SUBMISSION
+        // =============================================================================
+        
+        document.getElementById('registrationForm')?.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const labId = document.getElementById('labSelect').value;
+            const groupId = document.getElementById('groupSelect').value;
+            const isChangeMode = document.getElementById('isChangeMode').value === 'true';
+            const currentGroupId = document.getElementById('currentGroupId').value;
+            
+            if (!labId || !groupId) {
+                showAlert('registrationAlert', 'danger', 'Παρακαλώ επιλέξτε εργαστήριο και τμήμα.');
+                return;
+            }
+            
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Παρακαλώ περιμένετε...';
+            
+            try {
+                let response;
+                
+                if (isChangeMode) {
+                    // Change group
+                    response = await fetch('/api/change-group', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            lab_id: parseInt(labId),
+                            old_group_id: parseInt(currentGroupId),
+                            new_group_id: parseInt(groupId)
+                        })
+                    });
+                } else {
+                    // New registration
+                    response = await fetch('/api/register-lab', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            lab_id: parseInt(labId),
+                            group_id: parseInt(groupId)
+                        })
+                    });
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('registrationAlert', 'success', data.message);
+                    showAlert('alertContainer', 'success', data.message);
+                    
+                    // Redirect to my enrollments after delay
+                    setTimeout(() => {
+                        document.querySelector('.goto-tab[data-tab="#my-enrollments"]')?.click();
+                        location.reload(); // Refresh to update data
+                    }, 2000);
+                } else {
+                    showAlert('registrationAlert', 'danger', data.message);
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = `<i class="fas fa-check me-1"></i><span id="submitBtnText">${isChangeMode ? 'Αλλαγή Τμήματος' : 'Εγγραφή'}</span>`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('registrationAlert', 'danger', 'Σφάλμα στην επικοινωνία. Προσπαθήστε αργότερα.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<i class="fas fa-check me-1"></i><span id="submitBtnText">${isChangeMode ? 'Αλλαγή Τμήματος' : 'Εγγραφή'}</span>`;
+            }
+        });
+        
+        // =============================================================================
+        // CHANGE GROUP BUTTON (from My Enrollments)
+        // =============================================================================
+        
+        document.querySelectorAll('.change-group-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const labId = this.dataset.labId;
+                const groupId = this.dataset.groupId;
+                
+                // Navigate to registration tab
+                document.querySelector('.goto-tab[data-tab="#registration"]')?.click();
+                
+                // Pre-fill will happen when lab is selected
+                // For now, show message
+                showAlert('registrationAlert', 'info', 'Επιλέξτε εξάμηνο, μάθημα και εργαστήριο για να αλλάξετε τμήμα.');
+            });
+        });
+        
+        // =============================================================================
+        // SIDEBAR & THEME TOGGLE
+        // =============================================================================
+        
         document.getElementById('sidebarToggle').addEventListener('click', function() {
             document.getElementById('sidebar').classList.toggle('collapsed');
-            document.getElementById('mainContent').classList.toggle('expanded'); // Επανενεργοποίηση toggle class
+            document.getElementById('mainContent').classList.toggle('expanded');
         });
-        // Dark/Light mode switch
+        
         const themeToggle = document.getElementById('themeToggle');
         const body = document.body;
         const topFixedButtons = document.querySelector('.top-fixed-buttons');
         const sidebar = document.getElementById('sidebar');
-        const topBarTitle = document.querySelector('.top-bar-title h4');
-
-        // Set sidebar top margin based on fixed buttons height
+        
         const setSidebarTop = () => {
             const topBarHeight = topFixedButtons.offsetHeight;
             sidebar.style.top = `${topBarHeight}px`;
-            body.style.paddingTop = `${topBarHeight}px`; // Adjust body padding
+            body.style.paddingTop = `${topBarHeight}px`;
         };
-
-        // Call on load and resize
+        
         window.addEventListener('load', setSidebarTop);
         window.addEventListener('resize', setSidebarTop);
-
+        
         themeToggle.addEventListener('click', function() {
             body.classList.toggle('bg-dark');
             body.classList.toggle('text-light');
-            // Change background of the fixed top bar as well
             topFixedButtons.classList.toggle('bg-dark');
             topFixedButtons.classList.toggle('bg-light');
-
-            // Εναλλαγή εικονιδίου
+            
             const icon = themeToggle.querySelector('i');
             if (body.classList.contains('bg-dark')) {
                 icon.classList.remove('fa-moon');
@@ -435,18 +1158,20 @@
                 icon.classList.add('fa-moon');
             }
         });
-        // Κουμπιά μετάβασης στις καρτέλες
+        
+        // Tab navigation
         document.querySelectorAll('.goto-tab').forEach(btn => {
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
                 const tabId = this.getAttribute('data-tab');
-                // Ενεργοποιεί το tab
+                
                 document.querySelectorAll('.tab-pane').forEach(tab => tab.classList.remove('show', 'active'));
-                document.querySelector(tabId).classList.add('show', 'active');
-                // Ενεργοποιεί το αντίστοιχο link στο sidebar
+                document.querySelector(tabId)?.classList.add('show', 'active');
+                
                 document.querySelectorAll('.sidebar .nav-link').forEach(link => link.classList.remove('active'));
-                document.querySelector('.sidebar .nav-link[href="' + tabId + '"]').classList.add('active');
+                document.querySelector(`.sidebar .nav-link[href="${tabId}"]`)?.classList.add('active');
             });
         });
     </script>
 </body>
-</html> 
+</html>
