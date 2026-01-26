@@ -70,6 +70,72 @@ def get_group_occupancy(group_id, lab_id):
         'is_full': current_count >= max_users
     }
 
+def get_student_notifications(student_am):
+    """
+    Λήψη ειδοποιήσεων για φοιτητή (απουσίες).
+    Αντίστοιχο του createNtfs στο παλιό project.
+    """
+    academic_year = get_academic_year()
+    notifications = []
+    
+    # Λήψη εγγραφών με απουσίες
+    enrollments = get_student_enrollments(student_am, academic_year)
+    
+    for e in enrollments:
+        if e['absences'] and e['absences'] != '-':
+            # Μέτρηση απουσιών
+            absence_count = len(e['absences'].split(',')) if isinstance(e['absences'], str) else 0
+            
+            # Λήψη max_misses από το εργαστήριο
+            lab = CourseLab.query.get(e['lab_id'])
+            max_misses = lab.max_misses if lab else 3
+            
+            if absence_count > 0:
+                notifications.append({
+                    'type': 'warning' if absence_count >= max_misses - 1 else 'info',
+                    'lab_name': e['lab_name'],
+                    'message': f"Έχετε {absence_count} απουσίες στο {e['lab_name']}",
+                    'absences': absence_count,
+                    'max_absences': max_misses,
+                    'is_critical': absence_count >= max_misses
+                })
+    
+    return notifications
+
+def create_or_get_student(am, name, email=None):
+    """
+    Δημιουργία ή λήψη φοιτητή από τη βάση.
+    Αντίστοιχο του CheckUserRegistration στο παλιό project.
+    """
+    student = Student.query.filter_by(am=am).first()
+    
+    if student:
+        return student, False  # exists
+    
+    # Δημιουργία νέου φοιτητή
+    new_student = Student(
+        am=am,
+        name=name,
+        semester=1,  # Default semester
+        pwd='',  # Δεν χρησιμοποιείται με CAS
+        email=email or ''
+    )
+    
+    try:
+        db.session.add(new_student)
+        db.session.commit()
+        
+        audit_log(
+            'student_created',
+            new_value=f"Student {am} ({name}) created via CAS",
+            reason="First CAS login"
+        )
+        
+        return new_student, True  # created
+    except Exception as e:
+        db.session.rollback()
+        return None, False
+
 # =============================================================================
 # ERROR HANDLERS
 # =============================================================================
@@ -121,6 +187,7 @@ def cas_callback():
         audit_log('dev_login', new_value=f"Development user {username} logged in as {fake_user['role']}")
         return redirect(url_for('dashboard'))
     
+    # PRODUCTION MODE: CAS Authentication
     ticket = request.args.get('ticket')
     if not ticket:
         return redirect(url_for('login'))
@@ -137,16 +204,47 @@ def cas_callback():
     if auth is None:
         return "CAS authentication failed", 401
 
-    schGrAcPersonID = auth.find('cas:schGrAcPersonID', ns).text
-    displayName = auth.find('cas:displayName', ns).text
-
-    user = Student.query.filter_by(am=schGrAcPersonID).first()
-    if not user:
-        return "User not registered", 403
-
-    session['schGrAcPersonID'] = schGrAcPersonID
-    session['role'] = 'student'
-    session['name'] = displayName
+    # Extract CAS attributes
+    schGrAcPersonID = auth.find('cas:schGrAcPersonID', ns)
+    displayName = auth.find('cas:displayName', ns)
+    eduPersonAffiliation = auth.find('cas:eduPersonAffiliation', ns)
+    mail = auth.find('cas:mail', ns)
+    
+    schGrAcPersonID = schGrAcPersonID.text if schGrAcPersonID is not None else None
+    displayName = displayName.text if displayName is not None else 'Unknown'
+    affiliation = eduPersonAffiliation.text if eduPersonAffiliation is not None else ''
+    email = mail.text if mail is not None else ''
+    
+    if not schGrAcPersonID:
+        return "CAS authentication failed: No student ID", 401
+    
+    # Check if user is student
+    if 'student' in affiliation.lower():
+        # Create or get student
+        student, created = create_or_get_student(schGrAcPersonID, displayName, email)
+        
+        if not student:
+            return "Failed to create user account", 500
+        
+        session['schGrAcPersonID'] = schGrAcPersonID
+        session['role'] = 'student'
+        session['name'] = displayName
+        session['email'] = email
+        
+        if created:
+            audit_log('cas_first_login', new_value=f"New student {schGrAcPersonID} created")
+    
+    elif 'faculty' in affiliation.lower() or 'staff' in affiliation.lower():
+        # Check if professor exists
+        prof = Professor.query.filter_by(email=email).first()
+        if prof:
+            session['schGrAcPersonID'] = str(prof.prof_id)
+            session['role'] = 'professor'
+            session['name'] = displayName
+        else:
+            return "Professor not registered in system", 403
+    else:
+        return "Unknown user affiliation", 403
 
     return redirect(url_for('dashboard'))
 
@@ -190,11 +288,13 @@ def dashboard():
     registrations = RelLabStudent.query.all() if session.get('role') in ['professor', 'admin'] else []
     absences = StudentMissesPerGroup.query.all() if session.get('role') in ['professor', 'admin'] else []
     
-    # Εγγραφές του τρέχοντος φοιτητή
+    # Εγγραφές και ειδοποιήσεις του τρέχοντος φοιτητή
     student_enrollments = []
+    notifications = []
     if session.get('role') == 'student':
         student_am = session.get('schGrAcPersonID')
         student_enrollments = get_student_enrollments(student_am, academic_year)
+        notifications = get_student_notifications(student_am)
     
     return render_template('dashboard.html', 
                          name=session.get('name', 'Guest'), 
@@ -207,7 +307,8 @@ def dashboard():
                          professors=professors,
                          registrations=registrations,
                          absences=absences,
-                         student_enrollments=student_enrollments)
+                         student_enrollments=student_enrollments,
+                         notifications=notifications)
 
 # =============================================================================
 # PHASE 1: CASCADING DATA APIs
@@ -221,7 +322,7 @@ def get_semesters():
     
     return jsonify({
         'success': True,
-        'data': [{'id': s.semester, 'name': f'Εξάμηνο {s.semester}'} for s in semesters]
+        'data': [{'id': s.semester, 'name': f'{s.semester}'} for s in semesters]
     })
 
 @app.route('/api/courses/<semester>')
@@ -286,8 +387,6 @@ def get_groups_by_lab(lab_id):
         })
     
     lab = CourseLab.query.get(lab_id)
-    
-    # Έλεγχος περιόδου εγγραφών
     period_valid, period_msg = validate_registration_period(lab_id)
     
     return jsonify({
@@ -318,15 +417,7 @@ def get_current_academic_year():
 @app.route('/api/register-lab', methods=['POST'])
 @require_permission('registrations', 'create')
 def api_register_lab():
-    """
-    Εγγραφή φοιτητή σε εργαστήριο και τμήμα.
-    Αντίστοιχο του DoGroupRegistration στο παλιό project.
-    
-    Body: {
-        "lab_id": int,
-        "group_id": int
-    }
-    """
+    """Εγγραφή φοιτητή σε εργαστήριο και τμήμα"""
     data = request.get_json()
     
     if not data:
@@ -342,35 +433,17 @@ def api_register_lab():
     if not student_am:
         return jsonify({'success': False, 'message': 'Authentication required'}), 401
     
-    # Κλήση της κύριας συνάρτησης εγγραφής
     success, message, details = register_student_to_lab(student_am, lab_id, group_id)
     
     if success:
-        return jsonify({
-            'success': True,
-            'message': message,
-            'details': details
-        }), 200
+        return jsonify({'success': True, 'message': message, 'details': details}), 200
     else:
-        return jsonify({
-            'success': False,
-            'message': message,
-            'details': details
-        }), 400
+        return jsonify({'success': False, 'message': message, 'details': details}), 400
 
 @app.route('/api/change-group', methods=['PUT'])
 @require_permission('registrations', 'create')
 def api_change_group():
-    """
-    Αλλαγή τμήματος φοιτητή.
-    Αντίστοιχο του UpdateStudentPrefs στο παλιό project.
-    
-    Body: {
-        "lab_id": int,
-        "old_group_id": int,
-        "new_group_id": int
-    }
-    """
+    """Αλλαγή τμήματος φοιτητή"""
     data = request.get_json()
     
     if not data:
@@ -393,31 +466,19 @@ def api_change_group():
     success, message, details = change_student_group(student_am, old_group_id, new_group_id, lab_id)
     
     if success:
-        return jsonify({
-            'success': True,
-            'message': message,
-            'details': details
-        }), 200
+        return jsonify({'success': True, 'message': message, 'details': details}), 200
     else:
-        return jsonify({
-            'success': False,
-            'message': message,
-            'details': details
-        }), 400
+        return jsonify({'success': False, 'message': message, 'details': details}), 400
 
 @app.route('/api/student/enrollments')
 @require_permission('registrations', 'view')
 def api_student_enrollments():
-    """
-    Λήψη εγγραφών τρέχοντος φοιτητή.
-    Αντίστοιχο του FetchStudentLabs/SelectStudentGroups στο παλιό project.
-    """
+    """Λήψη εγγραφών τρέχοντος φοιτητή"""
     student_am = session.get('schGrAcPersonID')
     if not student_am:
         return jsonify({'success': False, 'message': 'Authentication required'}), 401
     
     year = request.args.get('year', type=int, default=get_academic_year())
-    
     enrollments = get_student_enrollments(student_am, year)
     
     return jsonify({
@@ -429,20 +490,14 @@ def api_student_enrollments():
 @app.route('/api/student/enrollment-status/<int:lab_id>')
 @require_permission('registrations', 'view')
 def api_enrollment_status(lab_id):
-    """
-    Έλεγχος κατάστασης εγγραφής φοιτητή σε συγκεκριμένο εργαστήριο.
-    Χρησιμοποιείται για να ξέρουμε αν πρέπει να κάνει νέα εγγραφή ή αλλαγή τμήματος.
-    """
+    """Έλεγχος κατάστασης εγγραφής φοιτητή σε συγκεκριμένο εργαστήριο"""
     student_am = session.get('schGrAcPersonID')
     if not student_am:
         return jsonify({'success': False, 'message': 'Authentication required'}), 401
     
     academic_year = get_academic_year()
-    
-    # Έλεγχος εγγραφής στο εργαστήριο
     lab_status = get_student_lab_status(student_am, lab_id)
     
-    # Έλεγχος σε ποιο τμήμα είναι
     current_group = db.session.query(RelGroupStudent, LabGroup).join(
         LabGroup, RelGroupStudent.group_id == LabGroup.group_id
     ).join(
@@ -453,7 +508,6 @@ def api_enrollment_status(lab_id):
         LabGroup.year == academic_year
     ).first()
     
-    # Έλεγχος περιόδου εγγραφών
     period_valid, period_msg = validate_registration_period(lab_id)
     
     return jsonify({
@@ -474,10 +528,7 @@ def api_enrollment_status(lab_id):
 @app.route('/api/groups/<int:group_id>/professor')
 @require_permission('professors_list', 'view')
 def api_group_professor(group_id):
-    """
-    Λήψη στοιχείων υπεύθυνου καθηγητή για τμήμα.
-    Αντίστοιχο του FillProfs/SelectProfOfGroup στο παλιό project.
-    """
+    """Λήψη στοιχείων υπεύθυνου καθηγητή για τμήμα"""
     from models import RelGroupProf
     
     professors = db.session.query(Professor).join(
@@ -500,6 +551,121 @@ def api_group_professor(group_id):
             'email': p.email,
             'tel': p.tel
         } for p in professors]
+    })
+
+# =============================================================================
+# PHASE 4: STUDENT PROFILE & NOTIFICATIONS APIs
+# =============================================================================
+
+@app.route('/api/student/profile', methods=['GET'])
+@require_permission('students_list', 'view_own_profile')
+def api_get_student_profile():
+    """Λήψη προφίλ τρέχοντος φοιτητή"""
+    student_am = session.get('schGrAcPersonID')
+    if not student_am:
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+    
+    student = Student.query.get(student_am)
+    if not student:
+        return jsonify({'success': False, 'message': 'Student not found'}), 404
+    
+    return jsonify({
+        'success': True,
+        'data': {
+            'am': student.am,
+            'name': student.name,
+            'semester': student.semester,
+            'email': student.email
+        }
+    })
+
+@app.route('/api/student/profile', methods=['PUT'])
+@require_permission('students_list', 'edit')
+def api_update_student_profile():
+    """
+    Ενημέρωση προφίλ φοιτητή.
+    Αντίστοιχο του update_email στο παλιό project.
+    """
+    student_am = session.get('schGrAcPersonID')
+    if not student_am:
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'message': 'Δεν δόθηκαν δεδομένα'}), 400
+    
+    student = Student.query.get(student_am)
+    if not student:
+        return jsonify({'success': False, 'message': 'Student not found'}), 404
+    
+    # Validation
+    name = data.get('name', '').strip()
+    email = data.get('email', '').strip()
+    semester = data.get('semester')
+    
+    if name and len(name) < 3:
+        return jsonify({'success': False, 'message': 'Δώστε Ονοματεπώνυμο'}), 400
+    
+    if email and '@' not in email:
+        return jsonify({'success': False, 'message': 'Εισάγετε έγκυρο email'}), 400
+    
+    if semester is not None:
+        try:
+            semester = int(semester)
+            if semester < 1 or semester > 12:
+                return jsonify({'success': False, 'message': 'Δώστε το εξάμηνο σπουδών με αριθμό (1-12)'}), 400
+        except ValueError:
+            return jsonify({'success': False, 'message': 'Δώστε το εξάμηνο σπουδών με αριθμό'}), 400
+    
+    try:
+        old_values = f"name={student.name}, email={student.email}, semester={student.semester}"
+        
+        if name:
+            student.name = name
+        if email:
+            student.email = email
+        if semester is not None:
+            student.semester = semester
+        
+        db.session.commit()
+        
+        new_values = f"name={student.name}, email={student.email}, semester={student.semester}"
+        audit_log(
+            'profile_updated',
+            old_value=old_values,
+            new_value=new_values,
+            reason="Student updated profile"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Το προφίλ ενημερώθηκε επιτυχώς',
+            'data': {
+                'am': student.am,
+                'name': student.name,
+                'semester': student.semester,
+                'email': student.email
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'Σφάλμα στην ενημέρωση'}), 500
+
+@app.route('/api/student/notifications')
+@require_permission('absences', 'view_own')
+def api_student_notifications():
+    """Λήψη ειδοποιήσεων φοιτητή (απουσίες)"""
+    student_am = session.get('schGrAcPersonID')
+    if not student_am:
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+    
+    notifications = get_student_notifications(student_am)
+    
+    return jsonify({
+        'success': True,
+        'count': len(notifications),
+        'data': notifications
     })
 
 # =============================================================================
@@ -529,7 +695,6 @@ def list_groups():
 def join_group(group_id):
     """Join group with transactional safety and preconditions check"""
     student_am = session['schGrAcPersonID']
-    
     success, message = transactional_enrollment(student_am, group_id)
     
     if success:
