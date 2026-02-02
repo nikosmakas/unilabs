@@ -1,72 +1,137 @@
-# UniLabs
+# UniLabs - Σύστημα Διαχείρισης Εργαστηρίων
 
-Μελέτη, σχεδίαση και υλοποίηση διαδικτυακής εφαρμογής για τη διαχείριση εργαστηρίων και εγγραφών φοιτητών.
+Διαδικτυακή εφαρμογή για τη διαχείριση εργαστηρίων και εγγραφών φοιτητών.
 
-## Δομή Project
+## 📁 Δομή Project
+thesis/unilabs/
+├── app/                            # Flask Application Root
+│   ├── data/
+│   │   ├── labregister.sqlite      # SQLite Database
+│   │   └── data_labregister.sql    # Schema Backup & Initial Data
+│   ├── templates/
+│   │   ├── dashboard.html          # Main User Interface
+│   │   ├── dev_login.html          # Developer Mode Login Page
+│   │   ├── login.html              # Production Login Page
+│   │   └── permission_matrix.json  # Role-based Access Control (RBAC) Mapping
+│   ├── app.py                      # Main Entry Point & API Routes
+│   ├── auth.py                     # Authorization & Registration Logic
+│   ├── models.py                   # SQLAlchemy Database Models
+│   ├── requirements.txt            # Python Dependencies
+│   ├── run_tests.py                # Automated Testing Suite
+│   └── TESTING_CHECKLIST.md        # Manual Testing & QA Guide
+│
+├── tests/
+│   ├── DEV_MODE_GUIDE.md           # Documentation for Developer Mode
+│   ├── AUTHORIZATION_GUIDE.md      # Detailed Authorization Docs
+│   └── test_dev_auth.py            # Authentication & Security Tests
+│
+├── previous_project_blueprint.json # Reference from LabRegFrontCas
+└── README.md                       # Project Documentation
 
-thesis/ # Root folder
-├── .venv/ # Python virtual environment
-├── unilabs/ # Flask application
-│ ├── app.py # Κύριο Flask app (routes)
-│ ├── models.py # Ορισμοί πινάκων βάσης (SQLAlchemy)
-│ ├── data/ # Αρχεία βάσης δεδομένων
-│ │ ├── data_labregister.sql
-│ │ └── labregister.sqlite
-│ ├── templates/ # Jinja2 templates
-│ │ ├── dashboard.html
-│ │ └── login.html
-│ ├── requirements.txt # Εξαρτήσεις Python
-│ └── sqlite3.exe # SQLite binary (για local testing)
+## 🚀 Γρήγορη Εκκίνηση
 
+### 1. Εγκατάσταση
 
+cd thesis/unilabs/app pip install -r requirements.txt
 
-## Οδηγίες Εκκίνησης
+### 2. Ενημέρωση Test Data
 
-1. **Εγκατάσταση εξαρτήσεων**
-   ```bash
-   pip install -r requirements.txt
-   ```
-2. **Αρχικοποίηση βάσης (προαιρετικά)**
-   - Τρέξε το Flask app και επισκέψου το `/init-db` για να δημιουργηθούν τα tables και να εισαχθούν τα δεδομένα.
-3. **Ρύθμιση CAS** - Χρησιμοποίησε AM και password από τα demo δεδομένα (π.χ. 12345/12345).
-	Επεξεργαστείτε το app.py και ορίστε
-	CAS_SERVER_URL = 'https://sso.uoi.gr/login'
-    CAS_SERVICE_URL = 'http://localhost:5000/cas_callback'  # Προσαρμογή ανάλογα με το environment
-4. **Εκκίνηση εφαρμογής**
-   ```bash
-   cd unilabs\app
-   python app.py
-   ```
-5. **Πρόσβαση στην εφαρμογή**
-   - Ανοίξτε τον περιηγητή σας και επισκεφθείτε `http://localhost:5000/login` για να συνδεθείτε μέσω CAS. 
+python run_tests.py
 
+### 3. Εκκίνηση Server
 
-## Διάγραμμα Ροής Εφαρμογής
-   (mermaid diagram)
-```
-sequenceDiagram
-    User->>+Flask: GET /login
-    Flask->>+CAS: Redirect to CAS login
-    CAS->>+User: Σύνδεση με πανεπιστημιακά credentials
-    User->>+Flask: GET /cas_callback?ticket=XYZ
-    Flask->>+CAS: Επαλήθευση ticket
-    CAS->>+Flask: Attributes (schGrAcPersonID, eduPersonAffiliation)
-    Flask->>+Database: Έλεγχος ύπαρξης χρήστη
-    alt Χρήστης υπάρχει
-        Flask->>+User: Redirect /dashboard
-    else Χρήστης δεν υπάρχει
-        Flask->>+User: Error "Δεν έχετε πρόσβαση"
-    end
-```
-## Περιγραφή
--Routes: Όλες οι διαδρομές βρίσκονται στο app.py
--Models: Ορισμοί πινάκων βάσης στο models.py (SQLAlchemy)
--Templates:
-    login.html: Σελίδα σύνδεσης με CAS
-    dashboard.html: Κύρια σελίδα εφαρμογής (διαφορετική για καθηγητές/φοιτητές)
--Δεδομένα:
-    data_labregister.sql: SQL dump αρχικής βάσης
-    labregister.sqlite: SQLite database file
+python app.py
 
+### 4. Πρόσβαση
+Άνοιξε: **http://localhost:5000/login**
+
+## 🔐 Development Mode
+
+Για testing χωρίς CAS authentication:
+
+| User | Role | Description |
+|------|------|-------------|
+| `student1` | Φοιτητής | AM: 13628 |
+| `prof1` | Καθηγητής | Prof ID: 1 |
+| `admin1` | Διαχειριστής | Full access |
+
+> Ενεργοποίηση: `AUTH_MODE=dev` στο environment
+
+## ✨ Features
+
+### Για Φοιτητές
+- ✅ Εγγραφή σε εργαστήριο (cascading dropdowns)
+- ✅ Αλλαγή τμήματος
+- ✅ Προβολή εγγραφών & απουσιών
+- ✅ Ενημέρωση προφίλ
+
+### Για Καθηγητές/Admins
+- ✅ Προβολή όλων των εγγραφών
+- ✅ Διαχείριση απουσιών
+- ✅ Προβολή φοιτητών
+
+### Σύστημα
+- ✅ Role-based access control
+- ✅ Audit logging
+- ✅ Registration period validation
+- ✅ Group capacity management
+- ✅ Dark/Light theme
+
+## 🔧 APIs
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/semesters` | GET | Λίστα εξαμήνων |
+| `/api/courses/<semester>` | GET | Μαθήματα ανά εξάμηνο |
+| `/api/labs/<course_id>` | GET | Εργαστήρια ανά μάθημα |
+| `/api/groups/<lab_id>` | GET | Τμήματα + occupancy |
+| `/api/register-lab` | POST | Εγγραφή σε εργαστήριο |
+| `/api/change-group` | PUT | Αλλαγή τμήματος |
+| `/api/student/enrollments` | GET | Εγγραφές φοιτητή |
+| `/api/student/profile` | GET/PUT | Προφίλ φοιτητή |
+| `/api/student/notifications` | GET | Ειδοποιήσεις απουσιών |
+
+## 🧪 Testing
+Terminal 1: Start server
+
+cd thesis/unilabs/app python app.py
+
+Terminal 2: Run tests
+python run_tests.py
+
+## 📊 Database
+
+Κύριοι πίνακες:
+- `student` - Φοιτητές
+- `professor` - Καθηγητές  
+- `coursename` - Μαθήματα
+- `course_lab` - Εργαστήρια
+- `lab_groups` - Τμήματα
+- `rel_lab_student` - Εγγραφές σε εργαστήρια
+- `rel_group_student` - Εγγραφές σε τμήματα
+- `student_misses_pergroup` - Απουσίες
+
+## 🔒 Production Deployment
+
+1. Set `AUTH_MODE=cas`
+2. Configure CAS URLs in `app.py`: CAS_SERVER_URL = 'https://sso.uoi.gr/login' CAS_SERVICE_URL = 'https://your-domain.gr/cas_callback'
+3. Set secure `SECRET_KEY`
+4. Use production WSGI (gunicorn/uwsgi)
+
+## 📚 Documentation
+
+- [Dev Mode Guide](tests/DEV_MODE_GUIDE.md)
+- [Authorization Guide](tests/AUTHORIZATION_GUIDE.md)
+- [Testing Checklist](app/TESTING_CHECKLIST.md)
+
+## 🔄 Migration από LabRegFrontCas
+
+Αυτό το project αντικαθιστά το παλιό `LabRegFrontCas` με:
+- Νέο Flask backend (Python)
+- Modern Bootstrap 5 UI
+- REST APIs
+- Role-based authorization
+
+---
 ## GitHub Repository
 [https://github.com/nikosmakas/unilabs]
