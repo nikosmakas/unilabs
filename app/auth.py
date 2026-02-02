@@ -1,8 +1,7 @@
 import json
 import functools
 import os
-from flask import session, abort, request, current_app
-from flask_login import current_user
+from flask import session, abort, request
 from models import db, Student, Professor, RelGroupStudent, LabGroup, CourseLab, RelLabStudent, RelLabGroup, StudentMissesPerGroup
 from sqlalchemy import and_
 import logging
@@ -157,7 +156,6 @@ def get_academic_year():
 def validate_registration_period(lab_id):
     """
     Έλεγχος αν η εγγραφή είναι εντός της επιτρεπόμενης περιόδου.
-    Αντίστοιχο του ValidateLabRegLimit στο παλιό project.
     
     Returns: (bool, str) - (is_valid, message)
     """
@@ -169,7 +167,6 @@ def validate_registration_period(lab_id):
         return True, "Δεν υπάρχει όριο εγγραφών"
     
     try:
-        # Parse reg_limit (format: DD/MM/YYYY)
         reg_limit_date = datetime.strptime(lab.reg_limit, "%d/%m/%Y").date()
         today = datetime.now().date()
         
@@ -178,7 +175,6 @@ def validate_registration_period(lab_id):
         
         return True, f"Εγγραφές έως {lab.reg_limit}"
     except ValueError:
-        # Αν το format είναι διαφορετικό, δοκίμασε άλλα formats
         try:
             reg_limit_date = datetime.strptime(lab.reg_limit, "%Y-%m-%d").date()
             today = datetime.now().date()
@@ -221,7 +217,6 @@ def check_group_capacity(group_id, lab_id):
 def get_student_lab_status(student_am, lab_id):
     """
     Λήψη κατάστασης φοιτητή σε εργαστήριο.
-    Αντίστοιχο του SelectStatusAndFailuresOfStudent.
     
     Returns: dict with status, failures, or None if not enrolled
     """
@@ -232,7 +227,7 @@ def get_student_lab_status(student_am, lab_id):
     
     return {
         'status': enrollment.status,
-        'failures': getattr(enrollment, 'failures', 0),  # Αν δεν υπάρχει το πεδίο
+        'failures': getattr(enrollment, 'failures', 0),
         'reg_month': enrollment.reg_month,
         'reg_year': enrollment.reg_year
     }
@@ -242,22 +237,15 @@ def check_existing_enrollment(student_am, lab_id, group_id, academic_year):
     Έλεγχος υπάρχουσας εγγραφής φοιτητή.
     
     Returns: (enrollment_type, message)
-    - 'none': Δεν υπάρχει εγγραφή
-    - 'same_group': Ήδη εγγεγραμμένος στο ίδιο τμήμα
-    - 'different_group': Εγγεγραμμένος σε άλλο τμήμα του ίδιου εργαστηρίου
-    - 'failed': Προηγούμενη αποτυχία, επιτρέπεται επανεγγραφή
     """
-    # Έλεγχος εγγραφής στο εργαστήριο
     lab_enrollment = RelLabStudent.query.filter_by(am=student_am, lab_id=lab_id).first()
     
     if not lab_enrollment:
         return 'none', "Νέα εγγραφή"
     
-    # Έλεγχος αν έχει αποτύχει
     if lab_enrollment.status == STATUS_FAILED:
         return 'failed', "Επανεγγραφή μετά από αποτυχία"
     
-    # Έλεγχος σε ποιο τμήμα είναι εγγεγραμμένος
     group_enrollment = db.session.query(RelGroupStudent).join(
         LabGroup, RelGroupStudent.group_id == LabGroup.group_id
     ).join(
@@ -283,29 +271,19 @@ def check_existing_enrollment(student_am, lab_id, group_id, academic_year):
 def register_student_to_lab(student_am, lab_id, group_id):
     """
     Πλήρης εγγραφή φοιτητή σε εργαστήριο και τμήμα.
-    Αντίστοιχο του DoGroupRegistration στο παλιό project.
-    
-    Εκτελεί όλους τους απαραίτητους ελέγχους:
-    1. Περίοδος εγγραφών
-    2. Χωρητικότητα τμήματος
-    3. Υπάρχουσα εγγραφή
-    4. Επανεγγραφή μετά από αποτυχία
     
     Returns: (bool, str, dict) - (success, message, details)
     """
     academic_year = get_academic_year()
     
-    # 1. Έλεγχος περιόδου εγγραφών
     period_valid, period_msg = validate_registration_period(lab_id)
     if not period_valid:
         return False, period_msg, {'error_type': 'registration_closed'}
     
-    # 2. Έλεγχος χωρητικότητας
     has_space, capacity_msg, occupancy = check_group_capacity(group_id, lab_id)
     if not has_space:
         return False, capacity_msg, {'error_type': 'group_full', 'occupancy': occupancy}
     
-    # 3. Έλεγχος υπάρχουσας εγγραφής
     enrollment_type, enrollment_msg = check_existing_enrollment(
         student_am, lab_id, group_id, academic_year
     )
@@ -317,9 +295,7 @@ def register_student_to_lab(student_am, lab_id, group_id):
         if enrollment_type == 'different_group':
             return False, "Χρησιμοποιήστε την αλλαγή τμήματος", {'error_type': 'use_change_group'}
         
-        # 4. Επανεγγραφή μετά από αποτυχία
         if enrollment_type == 'failed':
-            # Ενημέρωση status και αύξηση failures
             lab_enrollment = RelLabStudent.query.filter_by(am=student_am, lab_id=lab_id).first()
             old_failures = lab_enrollment.misses if hasattr(lab_enrollment, 'misses') else 0
             
@@ -335,7 +311,6 @@ def register_student_to_lab(student_am, lab_id, group_id):
                 reason="Student re-registered after failure"
             )
         else:
-            # 5. Νέα εγγραφή στο εργαστήριο
             new_lab_enrollment = RelLabStudent(
                 am=student_am,
                 lab_id=lab_id,
@@ -353,7 +328,6 @@ def register_student_to_lab(student_am, lab_id, group_id):
                 reason="New lab registration"
             )
         
-        # 6. Εγγραφή στο τμήμα
         new_group_enrollment = RelGroupStudent(
             am=student_am,
             group_id=group_id,
@@ -384,23 +358,17 @@ def register_student_to_lab(student_am, lab_id, group_id):
 def change_student_group(student_am, old_group_id, new_group_id, lab_id):
     """
     Αλλαγή τμήματος φοιτητή.
-    Αντίστοιχο του UpdateStudentPrefs στο παλιό project.
     
     Returns: (bool, str, dict) - (success, message, details)
     """
-    academic_year = get_academic_year()
-    
-    # 1. Έλεγχος περιόδου εγγραφών
     period_valid, period_msg = validate_registration_period(lab_id)
     if not period_valid:
         return False, period_msg, {'error_type': 'registration_closed'}
     
-    # 2. Έλεγχος χωρητικότητας νέου τμήματος
     has_space, capacity_msg, occupancy = check_group_capacity(new_group_id, lab_id)
     if not has_space:
         return False, capacity_msg, {'error_type': 'group_full', 'occupancy': occupancy}
     
-    # 3. Έλεγχος υπάρχουσας εγγραφής στο παλιό τμήμα
     existing_enrollment = RelGroupStudent.query.filter_by(
         am=student_am, group_id=old_group_id
     ).first()
@@ -411,7 +379,6 @@ def change_student_group(student_am, old_group_id, new_group_id, lab_id):
     logger.info(f"Changing group for student {student_am} from {old_group_id} to {new_group_id}")
     
     try:
-        # 4. Ενημέρωση τμήματος
         existing_enrollment.group_id = new_group_id
         existing_enrollment.group_reg_daymonth = f"{datetime.now().day}/{datetime.now().month}"
         existing_enrollment.group_reg_year = datetime.now().year
@@ -438,7 +405,6 @@ def change_student_group(student_am, old_group_id, new_group_id, lab_id):
 def get_student_enrollments(student_am, academic_year=None):
     """
     Λήψη εγγραφών φοιτητή.
-    Αντίστοιχο του SelectStudentGroups/FetchStudentLabs στο παλιό project.
     
     Returns: List of enrollment dictionaries
     """
@@ -471,7 +437,6 @@ def get_student_enrollments(student_am, academic_year=None):
     
     result = []
     for e in enrollments:
-        # Λήψη απουσιών για αυτό το τμήμα
         absences = StudentMissesPerGroup.query.filter_by(
             am=student_am, group_id=e.group_id
         ).first()
@@ -493,7 +458,7 @@ def get_student_enrollments(student_am, academic_year=None):
 # =============================================================================
 
 def check_enrollment_preconditions(student_am, group_id):
-    """Check if student can join group (enrolled in course & capacity available)"""
+    """Check if student can join group"""
     try:
         group = LabGroup.query.get(group_id)
         if not group:
@@ -518,14 +483,12 @@ def check_enrollment_preconditions(student_am, group_id):
 def transactional_enrollment(student_am, group_id):
     """Enroll student in group with transactional safety"""
     try:
-        # Get lab_id from group
         lab_group_rel = RelLabGroup.query.filter_by(group_id=group_id).first()
         if not lab_group_rel:
             return False, "No lab associated with this group"
         
         lab_id = lab_group_rel.lab_id
         
-        # Use the new comprehensive registration function
         success, message, details = register_student_to_lab(student_am, lab_id, group_id)
         return success, message
         
@@ -541,13 +504,11 @@ def record_absence(student_am, group_id, date, reason=None):
         if user_role not in ['professor', 'admin']:
             return False, "Insufficient permissions to record absence"
         
-        # Check if entry exists
         existing = StudentMissesPerGroup.query.filter_by(
             am=student_am, group_id=group_id
         ).first()
         
         if existing:
-            # Append to existing misses
             if existing.misses:
                 existing.misses = f"{existing.misses}, {date}"
             else:
