@@ -49,11 +49,11 @@ python app.py
 
 Για testing χωρίς CAS authentication:
 
-| User | Role | Description |
-|------|------|-------------|
-| `student1` | Φοιτητής | AM: 13628 |
-| `prof1` | Καθηγητής | Prof ID: 1 |
-| `admin1` | Διαχειριστής | Full access |
+| User			| Role			| Description	|
+|---------------|---------------|---------------|
+| `student1`	| Φοιτητής		| AM: 13628		|
+| `prof1`		| Καθηγητής		| Prof ID: 1	|
+| `admin1`		| Διαχειριστής	| Full access	|
 
 > Ενεργοποίηση: `AUTH_MODE=dev` στο environment
 
