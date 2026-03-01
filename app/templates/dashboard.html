@@ -1117,14 +1117,32 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    showAlert('registrationAlert', 'success', data.message);
-                    showAlert('alertContainer', 'success', data.message);
+                    // Εμφάνιση μηνύματος επιτυχίας χωρίς auto-dismiss
+                    showAlert('registrationAlert', 'success', 
+                        `${data.message}<br><small class="mt-2 d-block">
+                            <a href="#" class="alert-link goto-tab" data-tab="#my-enrollments" onclick="location.reload();">
+                                Δείτε τις εγγραφές σας →
+                            </a>
+                        </small>`, 
+                        false
+                    );
                     
-                    // Redirect to my enrollments after delay
-                    setTimeout(() => {
-                        document.querySelector('.goto-tab[data-tab="#my-enrollments"]')?.click();
-                        location.reload(); // Refresh to update data
-                    }, 2000);
+                    // Reset form για νέα εγγραφή
+                    document.getElementById('semesterSelect').value = '';
+                    resetSelect('courseSelect', '-- Επιλέξτε Μάθημα --');
+                    resetSelect('labSelect', '-- Επιλέξτε Εργαστήριο --');
+                    resetSelect('groupSelect', '-- Επιλέξτε Τμήμα --');
+                    document.getElementById('labInfo')?.classList.add('d-none');
+                    document.getElementById('enrollmentStatus')?.classList.add('d-none');
+                    document.getElementById('groupOccupancy')?.classList.add('d-none');
+                    document.getElementById('professorInfo')?.classList.add('d-none');
+                    document.getElementById('submitBtn').disabled = true;
+                    document.getElementById('submitBtnText').textContent = 'Εγγραφή';
+                    document.getElementById('isChangeMode').value = 'false';
+                    document.getElementById('currentGroupId').value = '';
+                    
+                    // Reset button
+                    submitBtn.innerHTML = '<i class="fas fa-check me-1"></i><span id="submitBtnText">Εγγραφή</span>';
                 } else {
                     showAlert('registrationAlert', 'danger', data.message);
                     submitBtn.disabled = false;
