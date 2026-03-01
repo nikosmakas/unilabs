@@ -2,7 +2,7 @@ import json
 import functools
 import os
 from flask import session, abort, request
-from models import db, Student, Professor, RelGroupStudent, LabGroup, CourseLab, RelLabStudent, RelLabGroup, StudentMissesPerGroup
+from models import db, Student, Professor, RelGroupStudent, LabGroup, CourseLab, RelLabStudent, RelLabGroup, StudentMissesPerGroup, Coursename, RelCourseLab
 from sqlalchemy import and_
 import logging
 from datetime import datetime
@@ -404,13 +404,14 @@ def change_student_group(student_am, old_group_id, new_group_id, lab_id):
 
 def get_student_enrollments(student_am, academic_year=None):
     """
-    Λήψη εγγραφών φοιτητή.
+    Λήψη εγγραφών φοιτητή με εξάμηνο, ταξινομημένες ανά εξάμηνο και αλφαβητικά.
     
-    Returns: List of enrollment dictionaries
+    Returns: List of enrollment dictionaries sorted by semester and lab name
     """
     if academic_year is None:
         academic_year = get_academic_year()
     
+    # Προσθήκη Coursename για να πάρουμε το εξάμηνο
     enrollments = db.session.query(
         CourseLab.name.label('lab_name'),
         CourseLab.lab_id,
@@ -418,7 +419,9 @@ def get_student_enrollments(student_am, academic_year=None):
         LabGroup.group_id,
         RelLabStudent.status,
         RelLabStudent.misses,
-        RelLabStudent.grade
+        RelLabStudent.grade,
+        Coursename.semester.label('semester'),
+        Coursename.name.label('course_name')
     ).join(
         RelLabStudent, CourseLab.lab_id == RelLabStudent.lab_id
     ).join(
@@ -430,6 +433,10 @@ def get_student_enrollments(student_am, academic_year=None):
             LabGroup.group_id == RelGroupStudent.group_id,
             RelLabStudent.am == RelGroupStudent.am
         )
+    ).join(
+        RelCourseLab, CourseLab.lab_id == RelCourseLab.lab_id
+    ).join(
+        Coursename, RelCourseLab.course_id == Coursename.course_id
     ).filter(
         RelLabStudent.am == student_am,
         LabGroup.year == academic_year
@@ -448,8 +455,13 @@ def get_student_enrollments(student_am, academic_year=None):
             'group_id': e.group_id,
             'status': e.status,
             'absences': absences.misses if absences else '-',
-            'grade': e.grade
+            'grade': e.grade,
+            'semester': e.semester,
+            'course_name': e.course_name
         })
+    
+    # Ταξινόμηση: πρώτα ανά εξάμηνο, μετά αλφαβητικά ανά όνομα εργαστηρίου
+    result.sort(key=lambda x: (x['semester'], x['lab_name']))
     
     return result
 

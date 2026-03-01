@@ -273,18 +273,21 @@ def dashboard():
     
     labs = CourseLab.query.all()
     
-    groups_raw = db.session.query(LabGroup, RelLabGroup.lab_id).join(
+    groups_raw = db.session.query(LabGroup, RelLabGroup.lab_id, CourseLab.name.label('lab_name')).join(
         RelLabGroup, LabGroup.group_id == RelLabGroup.group_id
+    ).join(
+        CourseLab, RelLabGroup.lab_id == CourseLab.lab_id
     ).filter(LabGroup.year == academic_year).all()
     
     groups = []
-    for group, lab_id in groups_raw:
+    for group, lab_id, lab_name in groups_raw:
         occupancy = get_group_occupancy(group.group_id, lab_id)
         groups.append({
             'group_id': group.group_id,
             'daytime': group.daytime,
             'year': group.year,
             'lab_id': lab_id,
+            'lab_name': lab_name,
             'occupancy_percentage': occupancy['percentage'],
             'available_spots': occupancy['available'],
             'is_full': occupancy['is_full']
@@ -292,7 +295,18 @@ def dashboard():
     
     students = Student.query.all() if session.get('role') in ['professor', 'admin'] else []
     professors = Professor.query.all()
-    registrations = RelLabStudent.query.all() if session.get('role') in ['professor', 'admin'] else []
+    
+    registrations_raw = RelLabStudent.query.all() if session.get('role') in ['professor', 'admin'] else []
+    registrations = []
+    for reg in registrations_raw:
+        lab = CourseLab.query.get(reg.lab_id)
+        registrations.append({
+            'am': reg.am,
+            'lab_id': reg.lab_id,
+            'lab_name': lab.name if lab else 'Άγνωστο',
+            'status': reg.status,
+        })
+    
     absences = StudentMissesPerGroup.query.all() if session.get('role') in ['professor', 'admin'] else []
     
     # Εγγραφές και ειδοποιήσεις του τρέχοντος φοιτητή
