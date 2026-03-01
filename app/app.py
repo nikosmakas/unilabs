@@ -574,6 +574,108 @@ def api_group_professor(group_id):
         } for p in professors]
     })
 
+@app.route('/api/professor/my-groups')
+@require_permission('groups', 'view')
+def api_professor_groups():
+    """Λήψη τμημάτων που ανήκουν στον καθηγητή"""
+    if session.get('role') not in ['professor', 'admin']:
+        return jsonify({'success': False, 'message': 'Μόνο για καθηγητές'}), 403
+    
+    prof_id = session.get('schGrAcPersonID')
+    academic_year = get_academic_year()
+    
+    from models import RelGroupProf
+    
+    # Λήψη τμημάτων του καθηγητή
+    groups = db.session.query(
+        LabGroup,
+        CourseLab.name.label('lab_name'),
+        CourseLab.lab_id
+    ).join(
+        RelGroupProf, LabGroup.group_id == RelGroupProf.group_id
+    ).join(
+        RelLabGroup, LabGroup.group_id == RelLabGroup.group_id
+    ).join(
+        CourseLab, RelLabGroup.lab_id == CourseLab.lab_id
+    ).filter(
+        RelGroupProf.prof_id == prof_id,
+        LabGroup.year == academic_year
+    ).all()
+    
+    result = []
+    for group, lab_name, lab_id in groups:
+        occupancy = get_group_occupancy(group.group_id, lab_id)
+        result.append({
+            'group_id': group.group_id,
+            'daytime': group.daytime,
+            'lab_name': lab_name,
+            'lab_id': lab_id,
+            'year': group.year,
+            'occupancy': occupancy
+        })
+    
+    return jsonify({
+        'success': True,
+        'data': result
+    })
+
+@app.route('/api/professor/group/<int:group_id>/students')
+@require_permission('students_list', 'view_professor_students')
+def api_professor_group_students(group_id):
+    """Λήψη φοιτητών εγγεγραμμένων σε τμήμα του καθηγητή"""
+    if session.get('role') not in ['professor', 'admin']:
+        return jsonify({'success': False, 'message': 'Μόνο για καθηγητές'}), 403
+    
+    prof_id = session.get('schGrAcPersonID')
+    
+    from models import RelGroupProf
+    
+    # Έλεγχος ότι το τμήμα ανήκει στον καθηγητή (εκτός αν είναι admin)
+    if session.get('role') == 'professor':
+        ownership = RelGroupProf.query.filter_by(
+            prof_id=prof_id,
+            group_id=group_id
+        ).first()
+        
+        if not ownership:
+            return jsonify({'success': False, 'message': 'Δεν έχετε πρόσβαση σε αυτό το τμήμα'}), 403
+    
+    # Λήψη φοιτητών του τμήματος
+    students = db.session.query(
+        Student,
+        RelGroupStudent.group_reg_daymonth,
+        RelGroupStudent.group_reg_year
+    ).join(
+        RelGroupStudent, Student.am == RelGroupStudent.am
+    ).filter(
+        RelGroupStudent.group_id == group_id
+    ).all()
+    
+    # Λήψη απουσιών
+    result = []
+    for student, reg_date, reg_year in students:
+        absences = StudentMissesPerGroup.query.filter_by(
+            am=student.am, group_id=group_id
+        ).first()
+        
+        result.append({
+            'am': student.am,
+            'name': student.name,
+            'email': student.email,
+            'semester': student.semester,
+            'absences': absences.misses if absences else '-'
+        })
+    
+    # Ταξινόμηση αλφαβητικά
+    result.sort(key=lambda x: x['name'])
+    
+    return jsonify({
+        'success': True,
+        'group_id': group_id,
+        'count': len(result),
+        'data': result
+    })
+
 # =============================================================================
 # PHASE 4: STUDENT PROFILE & NOTIFICATIONS APIs
 # =============================================================================

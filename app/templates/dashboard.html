@@ -182,6 +182,38 @@
         body.bg-dark .table-striped > tbody > tr:nth-of-type(odd) {
             background-color: rgba(255,255,255,0.05);
         }
+        
+        /* Breadcrumbs */
+        .breadcrumb-nav {
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        body.bg-dark .breadcrumb-nav {
+            background: #495057;
+        }
+        .breadcrumb-nav .breadcrumb {
+            margin-bottom: 0;
+        }
+        .breadcrumb-nav .breadcrumb-item a {
+            text-decoration: none;
+        }
+        
+        /* Professor group students */
+        .group-students-card {
+            border-left: 4px solid #0d6efd;
+        }
+        .student-list-item {
+            border-bottom: 1px solid #eee;
+            padding: 10px 0;
+        }
+        .student-list-item:last-child {
+            border-bottom: none;
+        }
+        body.bg-dark .student-list-item {
+            border-bottom-color: #495057;
+        }
     </style>
 </head>
 <body>
@@ -211,7 +243,7 @@
                 <small class="user-info-label">Συνδεδεμένος:</small>
                 <div class="fw-bold">{{ name }}</div>
                 <div class="badge bg-{% if role == 'student' %}success{% elif role == 'professor' %}primary{% elif role == 'admin' %}danger{% else %}secondary{% endif %}">
-                    {% if role == 'student' %}Φοιτητής{% elif role == 'professor' %}Καθηγητής{% elif role == 'admin' %}Διαχειριστής{% elif role == 'guest' %}Επισκέπτης{% else %}{{ role|title }}{% endif %}
+                    {% if role == 'student' %}Φοιτητής{% elsif role == 'professor' %}Καθηγητής{% elsif role == 'admin' %}Διαχειριστής{% elsif role == 'guest' %}Επισκέπτης{% else %}{{ role|title }}{% endif %}
                 </div>
                 {% if AUTH_MODE == 'dev' %}
                 <div class="mt-2">
@@ -272,6 +304,11 @@
                     <i class="fas fa-user-graduate me-2"></i>Φοιτητές
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#my-groups" data-bs-toggle="tab">
+                    <i class="fas fa-chalkboard-teacher me-2"></i>Τα Τμήματά μου
+                </a>
+            </li>
             {% endif %}
             <li class="nav-item">
                 <a class="nav-link" href="#professors" data-bs-toggle="tab">
@@ -298,6 +335,15 @@
         <!-- Global Alert Container -->
         <div id="alertContainer"></div>
         
+        <!-- Breadcrumb Navigation -->
+        <nav class="breadcrumb-nav" id="breadcrumbNav">
+            <ol class="breadcrumb" id="breadcrumbList">
+                <li class="breadcrumb-item active" aria-current="page">
+                    <i class="fas fa-home me-1"></i>Αρχική
+                </li>
+            </ol>
+        </nav>
+
         <div class="tab-content">
             <!-- Dashboard Tab -->
             <div class="tab-pane fade show active" id="dashboard">
@@ -725,6 +771,65 @@
                 </div>
             </div>
             {% endif %}
+
+            {% if role in ['professor', 'admin'] %}
+            <!-- My Groups Tab (Professor View) -->
+            <div class="tab-pane fade" id="my-groups">
+                <h2 class="mb-4">
+                    <i class="fas fa-chalkboard-teacher me-2"></i>Τα Τμήματά μου
+                </h2>
+                
+                <div id="myGroupsLoading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Φόρτωση...</span>
+                    </div>
+                </div>
+                
+                <div id="myGroupsContainer" class="row d-none"></div>
+                
+                <!-- Modal για προβολή φοιτητών τμήματος -->
+                <div class="modal fade" id="groupStudentsModal" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-users me-2"></i>Φοιτητές Τμήματος
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div id="groupStudentsLoading" class="text-center py-4">
+                                    <div class="spinner-border text-primary" role="status"></div>
+                                </div>
+                                <div id="groupStudentsContent" class="d-none">
+                                    <div class="d-flex justify-content-between mb-3">
+                                        <span id="groupStudentsInfo"></span>
+                                        <span class="badge bg-info" id="groupStudentsCount"></span>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-hover" id="groupStudentsTable">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Α.Μ.</th>
+                                                    <th>Ονοματεπώνυμο</th>
+                                                    <th>Email</th>
+                                                    <th>Εξάμηνο</th>
+                                                    <th>Απουσίες</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="groupStudentsBody"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div id="groupStudentsEmpty" class="alert alert-info d-none">
+                                    <i class="fas fa-info-circle me-2"></i>Δεν υπάρχουν εγγεγραμμένοι φοιτητές σε αυτό το τμήμα.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -766,6 +871,93 @@
         }
         
         // =============================================================================
+        // ΘΕΜΑ 7: BREADCRUMB & HISTORY MANAGEMENT
+        // =============================================================================
+        
+        const tabHistory = ['#dashboard'];
+        const tabNames = {
+            '#dashboard': 'Αρχική',
+            '#registration': 'Εγγραφή σε Εργαστήριο',
+            '#my-enrollments': 'Οι Εγγραφές μου',
+            '#labs': 'Εργαστήρια',
+            '#groups': 'Τμήματα',
+            '#students': 'Φοιτητές',
+            '#professors': 'Υπεύθυνοι',
+            '#registrations': 'Εγγραφές',
+            '#absences': 'Απουσίες',
+            '#my-groups': 'Τα Τμήματά μου'
+        };
+        
+        function updateBreadcrumb() {
+            const breadcrumbList = document.getElementById('breadcrumbList');
+            let html = '';
+            
+            tabHistory.forEach((tab, index) => {
+                const isLast = index === tabHistory.length - 1;
+                const name = tabNames[tab] || tab.replace('#', '');
+                
+                if (isLast) {
+                    html += `<li class="breadcrumb-item active" aria-current="page">${name}</li>`;
+                } else {
+                    html += `<li class="breadcrumb-item"><a href="${tab}" class="breadcrumb-link" data-tab="${tab}">${name}</a></li>`;
+                }
+            });
+            
+            breadcrumbList.innerHTML = html;
+            
+            // Add click handlers
+            document.querySelectorAll('.breadcrumb-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetTab = this.dataset.tab;
+                    const targetIndex = tabHistory.indexOf(targetTab);
+                    
+                    // Remove tabs after the clicked one
+                    tabHistory.splice(targetIndex + 1);
+                    
+                    navigateToTab(targetTab, false);
+                });
+            });
+        }
+        
+        function navigateToTab(tabId, addToHistory = true) {
+            // Update tab content
+            document.querySelectorAll('.tab-pane').forEach(tab => tab.classList.remove('show', 'active'));
+            document.querySelector(tabId)?.classList.add('show', 'active');
+            
+            // Update sidebar
+            document.querySelectorAll('.sidebar .nav-link').forEach(link => link.classList.remove('active'));
+            document.querySelector(`.sidebar .nav-link[href="${tabId}"]`)?.classList.add('active');
+            
+            // Update history
+            if (addToHistory && tabHistory[tabHistory.length - 1] !== tabId) {
+                tabHistory.push(tabId);
+            }
+            
+            // Update breadcrumb
+            updateBreadcrumb();
+            
+            // Update browser history
+            history.pushState({ tab: tabId }, '', tabId);
+            
+            // Load data for specific tabs
+            if (tabId === '#my-groups') {
+                loadProfessorGroups();
+            }
+        }
+        
+        // Handle browser back/forward
+        window.addEventListener('popstate', function(e) {
+            if (e.state && e.state.tab) {
+                const targetIndex = tabHistory.indexOf(e.state.tab);
+                if (targetIndex >= 0) {
+                    tabHistory.splice(targetIndex + 1);
+                }
+                navigateToTab(e.state.tab, false);
+            }
+        });
+        
+        // =============================================================================
         // CASCADING DROPDOWNS
         // =============================================================================
         
@@ -778,6 +970,12 @@
             {% if role == 'student' %}
             await loadSemesters();
             {% endif %}
+            
+            // Initialize breadcrumb
+            updateBreadcrumb();
+            
+            // Set initial history state
+            history.replaceState({ tab: '#dashboard' }, '', '#dashboard');
         });
         
         async function loadSemesters() {
@@ -792,7 +990,7 @@
                     data.data.forEach(semester => {
                         const option = document.createElement('option');
                         option.value = semester.id;
-                        option.textContent = semester.name;
+                        option.textContent = semester.name + 'ο Εξάμηνο';
                         select.appendChild(option);
                     });
                 }
@@ -951,7 +1149,7 @@
                     }
                 }
                 
-                // Populate groups
+                // Populate groups με κλείδωμα τρέχοντος τμήματος
                 if (groupsData.success) {
                     const select = document.getElementById('groupSelect');
                     select.innerHTML = '<option value="">-- Επιλέξτε Τμήμα --</option>';
@@ -966,12 +1164,14 @@
                         
                         option.textContent = `${group.daytime} (${occupancy.current}/${occupancy.max})`;
                         
-                        if (isFull && !isCurrentGroup) {
+                        // Κλείδωμα τρέχοντος τμήματος σε change mode
+                        if (isCurrentGroup && statusData.can_change_group) {
+                            option.disabled = true;
+                            option.textContent += ' - ΤΡΕΧΟΝ ΤΜΗΜΑ';
+                            option.style.fontWeight = 'bold';
+                        } else if (isFull) {
                             option.disabled = true;
                             option.textContent += ' - ΠΛΗΡΕΣ';
-                        }
-                        if (isCurrentGroup) {
-                            option.textContent += ' - Τρέχον';
                         }
                         
                         select.appendChild(option);
@@ -999,10 +1199,10 @@
                 return;
             }
             
-            // Check if trying to select current group
+            // Έλεγχος αν προσπαθεί να επιλέξει το τρέχον τμήμα
             if (isChangeMode && groupId == currentGroupId) {
                 document.getElementById('submitBtn').disabled = true;
-                showAlert('registrationAlert', 'warning', 'Είστε ήδη εγγεγραμμένος σε αυτό το τμήμα.');
+                showAlert('registrationAlert', 'warning', 'Δεν μπορείτε να επιλέξετε το τμήμα στο οποίο είστε ήδη εγγεγραμμένος.');
                 return;
             }
             
@@ -1068,7 +1268,7 @@
         });
         
         // =============================================================================
-        // FORM SUBMISSION
+        // FORM SUBMISSION (ΘΕΜΑ 8: Χωρίς redirect)
         // =============================================================================
         
         document.getElementById('registrationForm')?.addEventListener('submit', async function(e) {
@@ -1092,7 +1292,6 @@
                 let response;
                 
                 if (isChangeMode) {
-                    // Change group
                     response = await fetch('/api/change-group', {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
@@ -1103,7 +1302,6 @@
                         })
                     });
                 } else {
-                    // New registration
                     response = await fetch('/api/register-lab', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -1117,17 +1315,17 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Εμφάνιση μηνύματος επιτυχίας χωρίς auto-dismiss
+                    // Εμφάνιση μηνύματος χωρίς redirect
                     showAlert('registrationAlert', 'success', 
                         `${data.message}<br><small class="mt-2 d-block">
-                            <a href="#" class="alert-link goto-tab" data-tab="#my-enrollments" onclick="location.reload();">
-                                Δείτε τις εγγραφές σας →
+                            <a href="#" class="alert-link" onclick="location.reload(); return false;">
+                                <i class="fas fa-sync-alt me-1"></i>Ανανέωση για να δείτε τις εγγραφές σας
                             </a>
                         </small>`, 
                         false
                     );
                     
-                    // Reset form για νέα εγγραφή
+                    // Reset form
                     document.getElementById('semesterSelect').value = '';
                     resetSelect('courseSelect', '-- Επιλέξτε Μάθημα --');
                     resetSelect('labSelect', '-- Επιλέξτε Εργαστήριο --');
@@ -1136,12 +1334,10 @@
                     document.getElementById('enrollmentStatus')?.classList.add('d-none');
                     document.getElementById('groupOccupancy')?.classList.add('d-none');
                     document.getElementById('professorInfo')?.classList.add('d-none');
-                    document.getElementById('submitBtn').disabled = true;
                     document.getElementById('submitBtnText').textContent = 'Εγγραφή';
                     document.getElementById('isChangeMode').value = 'false';
                     document.getElementById('currentGroupId').value = '';
                     
-                    // Reset button
                     submitBtn.innerHTML = '<i class="fas fa-check me-1"></i><span id="submitBtnText">Εγγραφή</span>';
                 } else {
                     showAlert('registrationAlert', 'danger', data.message);
@@ -1157,6 +1353,148 @@
         });
         
         // =============================================================================
+        // ΘΕΜΑ 11: PROFESSOR GROUPS & STUDENTS
+        // =============================================================================
+        
+        async function loadProfessorGroups() {
+            const container = document.getElementById('myGroupsContainer');
+            const loading = document.getElementById('myGroupsLoading');
+            
+            loading.classList.remove('d-none');
+            container.classList.add('d-none');
+            
+            try {
+                const response = await fetch('/api/professor/my-groups');
+                const data = await response.json();
+                
+                loading.classList.add('d-none');
+                container.classList.remove('d-none');
+                
+                if (data.success && data.data.length > 0) {
+                    let html = '';
+                    data.data.forEach(group => {
+                        const occupancy = group.occupancy;
+                        const progressClass = occupancy.percentage >= 90 ? 'bg-danger' : 
+                                              occupancy.percentage >= 70 ? 'bg-warning' : 'bg-success';
+                        
+                        html += `
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="card group-students-card h-100">
+                                    <div class="card-header">
+                                        <strong>${group.lab_name}</strong>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="mb-2">
+                                            <i class="fas fa-clock me-2"></i>${group.daytime}
+                                        </p>
+                                        <div class="mb-3">
+                                            <small class="text-muted">Πληρότητα:</small>
+                                            <div class="progress occupancy-bar mt-1">
+                                                <div class="progress-bar ${progressClass}" style="width: ${occupancy.percentage}%"></div>
+                                            </div>
+                                            <small>${occupancy.current}/${occupancy.max} φοιτητές</small>
+                                        </div>
+                                        <button class="btn btn-primary btn-sm w-100 view-students-btn" 
+                                                data-group-id="${group.group_id}"
+                                                data-group-name="${group.lab_name} - ${group.daytime}">
+                                            <i class="fas fa-users me-1"></i>Προβολή Φοιτητών
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    container.innerHTML = html;
+                    
+                    // Add click handlers
+                    document.querySelectorAll('.view-students-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const groupId = this.dataset.groupId;
+                            const groupName = this.dataset.groupName;
+                            loadGroupStudents(groupId, groupName);
+                        });
+                    });
+                } else {
+                    container.innerHTML = `
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Δεν έχετε ανατεθειμένα τμήματα για το τρέχον ακαδημαϊκό έτος.
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading professor groups:', error);
+                loading.classList.add('d-none');
+                container.classList.remove('d-none');
+                container.innerHTML = `
+                    <div class="col-12">
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            Σφάλμα φόρτωσης τμημάτων.
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        async function loadGroupStudents(groupId, groupName) {
+            const modal = new bootstrap.Modal(document.getElementById('groupStudentsModal'));
+            const loading = document.getElementById('groupStudentsLoading');
+            const content = document.getElementById('groupStudentsContent');
+            const empty = document.getElementById('groupStudentsEmpty');
+            
+            loading.classList.remove('d-none');
+            content.classList.add('d-none');
+            empty.classList.add('d-none');
+            
+            modal.show();
+            
+            try {
+                const response = await fetch(`/api/professor/group/${groupId}/students`);
+                const data = await response.json();
+                
+                loading.classList.add('d-none');
+                
+                if (data.success && data.data.length > 0) {
+                    document.getElementById('groupStudentsInfo').textContent = groupName;
+                    document.getElementById('groupStudentsCount').textContent = `${data.count} φοιτητές`;
+                    
+                    const tbody = document.getElementById('groupStudentsBody');
+                    let html = '';
+                    
+                    data.data.forEach(student => {
+                        const absencesBadge = student.absences === '-' ? 
+                            '<span class="badge bg-success">0</span>' :
+                            `<span class="badge bg-warning text-dark">${student.absences.split(',').length}</span>`;
+                        
+                        html += `
+                            <tr>
+                                <td>${student.am}</td>
+                                <td>${student.name}</td>
+                                <td><a href="mailto:${student.email}">${student.email}</a></td>
+                                <td><span class="badge bg-secondary">${student.semester}ο</span></td>
+                                <td>${absencesBadge}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    tbody.innerHTML = html;
+                    content.classList.remove('d-none');
+                } else {
+                    empty.classList.remove('d-none');
+                }
+            } catch (error) {
+                console.error('Error loading group students:', error);
+                loading.classList.add('d-none');
+                empty.classList.remove('d-none');
+                empty.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>Σφάλμα φόρτωσης φοιτητών.';
+                empty.className = 'alert alert-danger';
+            }
+        }
+        
+        // =============================================================================
         // CHANGE GROUP BUTTON (from My Enrollments)
         // =============================================================================
         
@@ -1165,11 +1503,7 @@
                 const labId = this.dataset.labId;
                 const groupId = this.dataset.groupId;
                 
-                // Navigate to registration tab
-                document.querySelector('.goto-tab[data-tab="#registration"]')?.click();
-                
-                // Pre-fill will happen when lab is selected
-                // For now, show message
+                navigateToTab('#registration');
                 showAlert('registrationAlert', 'info', 'Επιλέξτε εξάμηνο, μάθημα και εργαστήριο για να αλλάξετε τμήμα.');
             });
         });
@@ -1213,17 +1547,21 @@
             }
         });
         
-        // Tab navigation
+        // Tab navigation with history
         document.querySelectorAll('.goto-tab').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
                 const tabId = this.getAttribute('data-tab');
-                
-                document.querySelectorAll('.tab-pane').forEach(tab => tab.classList.remove('show', 'active'));
-                document.querySelector(tabId)?.classList.add('show', 'active');
-                
-                document.querySelectorAll('.sidebar .nav-link').forEach(link => link.classList.remove('active'));
-                document.querySelector(`.sidebar .nav-link[href="${tabId}"]`)?.classList.add('active');
+                navigateToTab(tabId);
+            });
+        });
+        
+        // Sidebar navigation with history
+        document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const tabId = this.getAttribute('href');
+                navigateToTab(tabId);
             });
         });
     </script>
