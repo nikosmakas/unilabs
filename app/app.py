@@ -172,6 +172,13 @@ def login():
     params = {'service': SERVICE_URL}
     return redirect(f"{CAS_LOGIN_URL}?{urlencode(params)}")
 
+@app.route('/')
+def index():
+    """Default landing page - redirect to login"""
+    if 'schGrAcPersonID' in session:
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('login'))
+
 @app.route('/cas_callback')
 def cas_callback():
     if app.config['AUTH_MODE'] == 'dev':
