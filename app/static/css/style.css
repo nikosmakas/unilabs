@@ -412,3 +412,35 @@ body.bg-dark .student-list-item {
 .modal {
     z-index: 1210;
 }
+
+/* =============================================================================
+   RESPONSIVE / MOBILE
+   ============================================================================= */
+
+@media (max-width: 767.98px) {
+    .sidebar {
+        margin-left: -250px;
+    }
+
+    .sidebar:not(.collapsed) {
+        margin-left: 0;
+    }
+
+    .main-content {
+        margin-left: 0;
+    }
+
+    .top-bar-title h4 {
+        font-size: 1rem;
+    }
+}
+
+/* =============================================================================
+   FOCUS VISIBLE (a11y)
+   ============================================================================= */
+
+.toggle-btn:focus-visible,
+#themeToggle:focus-visible {
+    outline: 2px solid #0d6efd;
+    outline-offset: 2px;
+}

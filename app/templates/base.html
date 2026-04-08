@@ -11,10 +11,10 @@
 <body>
     <!-- Top Bar -->
     <div class="top-fixed-buttons">
-        <button class="toggle-btn" id="sidebarToggle">
+        <button class="toggle-btn" id="sidebarToggle" aria-expanded="true" aria-controls="sidebar" aria-label="Toggle navigation">
             <i class="fas fa-bars"></i>
         </button>
-        <button class="btn btn-outline-secondary" id="themeToggle">
+        <button class="btn btn-outline-secondary" id="themeToggle" aria-label="Toggle Dark Mode">
             <i class="fas fa-moon"></i> <span class="d-none d-md-inline">Dark/Light</span>
         </button>
         <a href="{{ url_for('views_bp.dashboard') }}" class="btn btn-primary">
@@ -26,7 +26,7 @@
     </div>
 
     <!-- Sidebar -->
-    <div class="sidebar" id="sidebar">
+    <nav class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
         <div class="p-3">
             <h5>Σύστημα Εργαστηρίων</h5>
             
@@ -119,10 +119,10 @@
             </li>
             {% endif %}
         </ul>
-    </div>
+    </nav>
 
     <!-- Main Content -->
-    <div class="main-content" id="mainContent">
+    <div class="main-content" id="mainContent" role="main">
         <!-- Global Alert Container -->
         <div id="alertContainer"></div>
         
@@ -175,9 +175,37 @@
             }
         }
         
-        document.getElementById('sidebarToggle').addEventListener('click', function() {
-            document.getElementById('sidebar').classList.toggle('collapsed');
-            document.getElementById('mainContent').classList.toggle('expanded');
+        const sidebarEl = document.getElementById('sidebar');
+        const mainEl = document.getElementById('mainContent');
+        const toggleBtn = document.getElementById('sidebarToggle');
+
+        function isMobile() { return window.innerWidth < 768; }
+
+        function applySidebarState(collapsed) {
+            sidebarEl.classList.toggle('collapsed', collapsed);
+            mainEl.classList.toggle('expanded', collapsed);
+            toggleBtn.setAttribute('aria-expanded', String(!collapsed));
+        }
+
+        // On load: mobile always starts collapsed; desktop reads localStorage
+        applySidebarState(isMobile() ? true : localStorage.getItem('sidebarState') === 'collapsed');
+
+        toggleBtn.addEventListener('click', function() {
+            const willCollapse = !sidebarEl.classList.contains('collapsed');
+            applySidebarState(willCollapse);
+            if (!isMobile()) {
+                localStorage.setItem('sidebarState', willCollapse ? 'collapsed' : 'expanded');
+            }
+        });
+
+        // On resize: if crossing to mobile, auto-collapse; if crossing to desktop, restore preference
+        let wasMobile = isMobile();
+        window.addEventListener('resize', function() {
+            const nowMobile = isMobile();
+            if (nowMobile !== wasMobile) {
+                applySidebarState(nowMobile ? true : localStorage.getItem('sidebarState') === 'collapsed');
+                wasMobile = nowMobile;
+            }
         });
         
         const themeToggle = document.getElementById('themeToggle');
