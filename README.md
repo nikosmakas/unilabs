@@ -3,44 +3,58 @@
 Διαδικτυακή εφαρμογή για τη διαχείριση εργαστηρίων και εγγραφών φοιτητών.
 
 ## 📁 Δομή Project
+```
 thesis/unilabs/
 ├── app/                            # Flask Application Root
 │   ├── data/
 │   │   ├── labregister.sqlite      # SQLite Database
 │   │   └── data_labregister.sql    # Schema Backup & Initial Data
-│   ├── templates/
-│   │   ├── dashboard.html          # Main User Interface
-│   │   ├── dev_login.html          # Developer Mode Login Page
-│   │   ├── login.html              # Production Login Page
-│   │   └── permission_matrix.json  # Role-based Access Control (RBAC) Mapping
-│   ├── app.py                      # Main Entry Point & API Routes
+│   ├── routes/
+│   │   ├── api.py                  # REST API Endpoints
+│   │   ├── auth_routes.py          # Authentication (CAS + Dev Mode)
+│   │   └── views.py               # Page Routes (Blueprints)
+│   ├── static/css/style.css        # Stylesheet (Dark/Light theme)
+│   ├── templates/                  # Jinja2 HTML Templates
+│   ├── app.py                      # Main Entry Point
 │   ├── auth.py                     # Authorization & Registration Logic
+│   ├── helpers.py                  # Utility Functions
 │   ├── models.py                   # SQLAlchemy Database Models
 │   ├── requirements.txt            # Python Dependencies
-│   ├── run_tests.py                # Automated Testing Suite
-│   └── TESTING_CHECKLIST.md        # Manual Testing & QA Guide
+│   └── run_tests.py                # Automated Testing Suite
+│
+├── docs/
+│   ├── AUTHORIZATION_GUIDE.md      # Detailed Authorization Docs
+│   ├── DEV_MODE_GUIDE.md           # Documentation for Developer Mode
+│   ├── TESTING_CHECKLIST.md        # Manual Testing & QA Guide
+│   └── previous_project_blueprint.json
 │
 ├── tests/
-│   ├── DEV_MODE_GUIDE.md           # Documentation for Developer Mode
-│   ├── AUTHORIZATION_GUIDE.md      # Detailed Authorization Docs
 │   └── test_dev_auth.py            # Authentication & Security Tests
 │
-├── previous_project_blueprint.json # Reference from LabRegFrontCas
-└── README.md                       # Project Documentation
+├── seed.py                         # Database Seeder (mock data)
+├── .gitignore
+└── README.md
+```
 
 ## 🚀 Γρήγορη Εκκίνηση
 
 ### 1. Εγκατάσταση
+```bash
+cd thesis/unilabs/app
+pip install -r requirements.txt
+```
 
-cd thesis/unilabs/app pip install -r requirements.txt
-
-### 2. Ενημέρωση Test Data
-
-python run_tests.py
+### 2. Seed Database (mock data)
+```bash
+cd thesis/unilabs
+python seed.py
+```
 
 ### 3. Εκκίνηση Server
-
+```bash
+cd thesis/unilabs/app
 python app.py
+```
 
 ### 4. Πρόσβαση
 Άνοιξε: **http://localhost:5000/login**
@@ -49,11 +63,13 @@ python app.py
 
 Για testing χωρίς CAS authentication:
 
-| User			| Role			| Description	|
-|---------------|---------------|---------------|
-| `student1`	| Φοιτητής		| AM: 13628		|
-| `prof1`		| Καθηγητής		| Prof ID: 1	|
-| `admin1`		| Διαχειριστής	| Full access	|
+| User       | Role         | ID      | Description              |
+|------------|--------------|---------|--------------------------|
+| `student1` | Φοιτητής     | AM 13628| Dev test student         |
+| `student2` | Φοιτητής     | AM 10001| Αλεξίου Μαρία            |
+| `prof1`    | Καθηγητής    | ID 101  | Παπαδόπουλος Νίκος       |
+| `prof2`    | Καθηγήτρια   | ID 102  | Αντωνίου Ελένη           |
+| `admin1`   | Διαχειριστής | ID 999  | Full access              |
 
 > Ενεργοποίηση: `AUTH_MODE=dev` στο environment
 
@@ -87,17 +103,27 @@ python app.py
 | `/api/groups/<lab_id>` | GET | Τμήματα + occupancy |
 | `/api/register-lab` | POST | Εγγραφή σε εργαστήριο |
 | `/api/change-group` | PUT | Αλλαγή τμήματος |
+| `/api/student/enrollment/<lab_id>` | DELETE | Απεγγραφή από εργαστήριο |
 | `/api/student/enrollments` | GET | Εγγραφές φοιτητή |
 | `/api/student/profile` | GET/PUT | Προφίλ φοιτητή |
 | `/api/student/notifications` | GET | Ειδοποιήσεις απουσιών |
+| `/api/professor/my-groups` | GET | Τμήματα καθηγητή |
+| `/api/professor/group/<id>/students` | GET | Φοιτητές τμήματος |
+| `/api/professor/profile` | PUT | Επεξεργασία προφίλ καθηγητή |
+| `/api/labs/<lab_id>/description` | PUT | Επεξεργασία περιγραφής εργαστηρίου |
 
 ## 🧪 Testing
-Terminal 1: Start server
+```bash
+# Terminal 1: Seed + start server
+cd thesis/unilabs
+python seed.py
+cd app
+python app.py
 
-cd thesis/unilabs/app python app.py
-
-Terminal 2: Run tests
+# Terminal 2: Run tests
+cd thesis/unilabs/app
 python run_tests.py
+```
 
 ## 📊 Database
 
@@ -120,9 +146,9 @@ python run_tests.py
 
 ## 📚 Documentation
 
-- [Dev Mode Guide](tests/DEV_MODE_GUIDE.md)
-- [Authorization Guide](tests/AUTHORIZATION_GUIDE.md)
-- [Testing Checklist](app/TESTING_CHECKLIST.md)
+- [Dev Mode Guide](docs/DEV_MODE_GUIDE.md)
+- [Authorization Guide](docs/AUTHORIZATION_GUIDE.md)
+- [Testing Checklist](docs/TESTING_CHECKLIST.md)
 
 ## 🔄 Migration από LabRegFrontCas
 

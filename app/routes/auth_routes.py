@@ -10,22 +10,34 @@ auth_bp = Blueprint('auth_bp', __name__)
 
 FAKE_USERS = {
     'student1': {
-        'name': 'Test Student',
+        'name': 'Test Student (Dev)',
         'role': 'student',
         'am': '13628',
-        'email': 'student1@test.gr'
+        'email': 'test.student@example.com'
+    },
+    'student2': {
+        'name': 'Αλεξίου Μαρία',
+        'role': 'student',
+        'am': '10001',
+        'email': 'malexiou@student.uoi.gr'
     },
     'prof1': {
-        'name': 'Test Professor',
+        'name': 'Παπαδόπουλος Νίκος',
         'role': 'professor',
-        'prof_id': '1',
-        'email': 'prof1@test.gr'
+        'prof_id': '101',
+        'email': 'npapadopoulos@uoi.gr'
+    },
+    'prof2': {
+        'name': 'Αντωνίου Ελένη',
+        'role': 'professor',
+        'prof_id': '102',
+        'email': 'eantonioiu@uoi.gr'
     },
     'admin1': {
-        'name': 'Test Admin',
+        'name': 'System Administrator',
         'role': 'admin',
-        'admin_id': '1',
-        'email': 'admin1@test.gr'
+        'admin_id': '999',
+        'email': 'admin@uoi.gr'
     }
 }
 
