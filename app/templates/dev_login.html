@@ -139,7 +139,7 @@
             <div style="margin-top: 10px;">
                 <strong>ID:</strong> {{ user.get('am', user.get('prof_id', user.get('admin_id'))) }}
             </div>
-            <a href="{{ url_for('cas_callback', username=username) }}" class="login-btn">
+            <a href="{{ url_for('auth_bp.cas_callback', username=username) }}" class="login-btn">
                 Login as {{ user.name }}
             </a>
         </div>

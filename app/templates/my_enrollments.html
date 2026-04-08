@@ -44,7 +44,7 @@
                 </div>
                 {% if enrollment.status == 'Σε Εξέλιξη' %}
                 <hr>
-                <a href="{{ url_for('registration') }}" class="btn btn-sm btn-outline-primary">
+                <a href="{{ url_for('views_bp.registration') }}" class="btn btn-sm btn-outline-primary">
                     <i class="fas fa-exchange-alt me-1"></i>Αλλαγή Τμήματος
                 </a>
                 {% endif %}
@@ -57,7 +57,7 @@
 <div class="alert alert-info">
     <i class="fas fa-info-circle me-2"></i>
     Δεν έχετε εγγραφεί σε κανένα εργαστήριο για το ακαδημαϊκό έτος {{ academic_year }}-{{ academic_year + 1 }}.
-    <a href="{{ url_for('registration') }}" class="alert-link">Εγγραφείτε τώρα!</a>
+    <a href="{{ url_for('views_bp.registration') }}" class="alert-link">Εγγραφείτε τώρα!</a>
 </div>
 {% endif %}
 {% endblock %}
