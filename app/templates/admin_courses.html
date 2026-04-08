@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Διαχείριση Μαθημάτων{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active" aria-current="page">Διαχείριση Μαθημάτων</li>
+{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">
+    <i class="fas fa-user-shield me-2"></i>Διαχείριση Μαθημάτων — Δικαιούχοι Εγγραφής
+</h2>
+
+<p class="text-muted mb-4">
+    Ανεβάστε αρχείο CSV με τα Α.Μ. των φοιτητών που έχουν δηλώσει κάθε θεωρητικό μάθημα.
+    Μόνο αυτοί θα μπορούν να εγγραφούν στα αντίστοιχα εργαστήρια.
+    Αν δεν υπάρχει λίστα, η εγγραφή είναι ελεύθερη για όλους.
+</p>
+
+<div id="adminAlert"></div>
+
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Εξάμηνο</th>
+                <th>Μάθημα</th>
+                <th>Δικαιούχοι</th>
+                <th>Ενέργειες</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for course in courses %}
+            <tr id="course-row-{{ course.course_id }}">
+                <td>{{ course.course_id }}</td>
+                <td><span class="badge bg-secondary">{{ course.semester }}</span></td>
+                <td><strong>{{ course.name }}</strong></td>
+                <td>
+                    <span class="badge {{ 'bg-success' if course.eligible_count > 0 else 'bg-secondary' }}" id="count-{{ course.course_id }}">
+                        {{ course.eligible_count if course.eligible_count > 0 else 'Χωρίς λίστα' }}
+                    </span>
+                </td>
+                <td>
+                    <div class="d-flex gap-2 align-items-center">
+                        <form class="upload-form d-inline-flex align-items-center gap-1" data-course-id="{{ course.course_id }}">
+                            <input type="file" accept=".csv" class="form-control form-control-sm csv-file-input" style="max-width:200px" required>
+                            <button type="submit" class="btn btn-sm btn-primary">
+                                <i class="fas fa-upload me-1"></i>Ανέβασμα
+                            </button>
+                        </form>
+                        {% if course.eligible_count > 0 %}
+                        <button class="btn btn-sm btn-outline-danger clear-btn" data-course-id="{{ course.course_id }}" title="Διαγραφή λίστας">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.querySelectorAll('.upload-form').forEach(form => {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const courseId = this.dataset.courseId;
+            const fileInput = this.querySelector('.csv-file-input');
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const btn = this.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch(`/api/admin/course/${courseId}/import-eligible`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showAlert('adminAlert', 'success', `${data.message} (Μάθημα #${courseId})`);
+                    const badge = document.getElementById(`count-${courseId}`);
+                    badge.textContent = data.data.count;
+                    badge.className = 'badge bg-success';
+                    // Add clear button if not present
+                    const row = document.getElementById(`course-row-${courseId}`);
+                    if (!row.querySelector('.clear-btn')) {
+                        const td = row.querySelector('td:last-child .d-flex');
+                        const clearBtn = document.createElement('button');
+                        clearBtn.className = 'btn btn-sm btn-outline-danger clear-btn';
+                        clearBtn.dataset.courseId = courseId;
+                        clearBtn.title = 'Διαγραφή λίστας';
+                        clearBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
+                        clearBtn.addEventListener('click', handleClear);
+                        td.appendChild(clearBtn);
+                    }
+                } else {
+                    showAlert('adminAlert', 'danger', data.message);
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                showAlert('adminAlert', 'danger', 'Σφάλμα κατά το ανέβασμα.');
+            }
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-upload me-1"></i>Ανέβασμα';
+            fileInput.value = '';
+        });
+    });
+
+    async function handleClear() {
+        const courseId = this.dataset.courseId;
+        if (!confirm('Διαγραφή λίστας δικαιούχων; Η εγγραφή θα γίνει ελεύθερη για όλους.')) return;
+        try {
+            const response = await fetch(`/api/admin/course/${courseId}/clear-eligible`, { method: 'DELETE' });
+            const data = await response.json();
+            if (data.success) {
+                showAlert('adminAlert', 'success', `Η λίστα διαγράφηκε (Μάθημα #${courseId}).`);
+                const badge = document.getElementById(`count-${courseId}`);
+                badge.textContent = 'Χωρίς λίστα';
+                badge.className = 'badge bg-secondary';
+                this.remove();
+            } else {
+                showAlert('adminAlert', 'danger', data.message);
+            }
+        } catch (error) {
+            showAlert('adminAlert', 'danger', 'Σφάλμα διαγραφής.');
+        }
+    }
+
+    document.querySelectorAll('.clear-btn').forEach(btn => {
+        btn.addEventListener('click', handleClear);
+    });
+</script>
+{% endblock %}

@@ -2,7 +2,8 @@ from flask import Blueprint, render_template, session
 
 from models import (
     Student, Professor, db, LabGroup, CourseLab,
-    RelLabGroup, RelLabStudent, StudentMissesPerGroup
+    RelLabGroup, RelLabStudent, StudentMissesPerGroup,
+    Coursename, CourseEligibility
 )
 from auth import (
     require_permission, require_role, get_academic_year, get_student_enrollments
@@ -149,3 +150,25 @@ def my_groups_page():
     """Professor's groups - data loaded via API calls from JS."""
     return render_template('my_groups.html',
                            active_page='my_groups')
+
+
+@views_bp.route('/admin/courses')
+@require_permission('registrations', 'manage')
+def admin_courses_page():
+    """Admin course management - eligibility list uploads."""
+    if session.get('role') != 'admin':
+        from flask import abort
+        abort(403)
+    courses = Coursename.query.order_by(Coursename.semester, Coursename.name).all()
+    courses_data = []
+    for c in courses:
+        count = CourseEligibility.query.filter_by(course_id=c.course_id).count()
+        courses_data.append({
+            'course_id': c.course_id,
+            'name': c.name,
+            'semester': c.semester,
+            'eligible_count': count
+        })
+    return render_template('admin_courses.html',
+                           active_page='admin_courses',
+                           courses=courses_data)

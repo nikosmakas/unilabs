@@ -118,6 +118,13 @@
                 </a>
             </li>
             {% endif %}
+            {% if role == 'admin' %}
+            <li class="nav-item">
+                <a class="nav-link {% if active_page == 'admin_courses' %}active{% endif %}" href="{{ url_for('views_bp.admin_courses_page') }}">
+                    <i class="fas fa-user-shield me-2"></i>Διαχείριση Μαθημάτων
+                </a>
+            </li>
+            {% endif %}
         </ul>
     </nav>
 

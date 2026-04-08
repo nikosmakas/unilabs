@@ -14,6 +14,9 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH}'
 app.config['AUTH_MODE'] = os.getenv('AUTH_MODE', 'dev')
 init_app(app)
 
+with app.app_context():
+    db.create_all()
+
 # =============================================================================
 # CONTEXT PROCESSOR
 # =============================================================================

@@ -94,4 +94,11 @@ class StudentMissesPerGroup(db.Model):
     __tablename__ = 'student_misses_pergroup'
     am = db.Column(db.Integer, primary_key=True)
     group_id = db.Column(db.Integer, primary_key=True)
-    misses = db.Column(db.Text, nullable=False) 
+    misses = db.Column(db.Text, nullable=False)
+
+
+class CourseEligibility(db.Model):
+    __tablename__ = 'course_eligibility'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    course_id = db.Column(db.Integer, nullable=False)
+    am = db.Column(db.Integer, nullable=False)

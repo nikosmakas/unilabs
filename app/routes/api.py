@@ -6,7 +6,7 @@ import io
 from models import (
     Student, Professor, db, LabGroup, CourseLab, RelGroupStudent,
     Coursename, RelCourseLab, RelLabGroup, RelLabStudent,
-    StudentMissesPerGroup, RelGroupProf
+    StudentMissesPerGroup, RelGroupProf, CourseEligibility
 )
 from auth import (
     require_permission, audit_log, mask_pii,
@@ -19,6 +19,24 @@ from auth import (
 from helpers import get_group_occupancy, get_student_notifications
 
 api_bp = Blueprint('api_bp', __name__)
+
+
+def _check_eligibility(student_am, lab_id):
+    """Check if an eligibility list exists for the lab's course and whether
+    the student is on it.  Returns (ok, message).
+    """
+    course_rel = RelCourseLab.query.filter_by(lab_id=lab_id).first()
+    if not course_rel:
+        return True, ''  # no course link → skip check
+    course_id = course_rel.course_id
+    # If no eligibility records uploaded for this course, allow everyone
+    if not CourseEligibility.query.filter_by(course_id=course_id).first():
+        return True, ''
+    # Records exist – student must be on the list
+    if CourseEligibility.query.filter_by(course_id=course_id, am=int(student_am)).first():
+        return True, ''
+    return False, '\u0394\u03b5\u03bd \u03ad\u03c7\u03b5\u03c4\u03b5 \u03b4\u03b9\u03ba\u03b1\u03af\u03c9\u03bc\u03b1 \u03b5\u03b3\u03b3\u03c1\u03b1\u03c6\u03ae\u03c2. \u0394\u03b5\u03bd \u03b2\u03c1\u03ad\u03b8\u03b7\u03ba\u03b5 \u03b4\u03ae\u03bb\u03c9\u03c3\u03b7 \u03c4\u03bf\u03c5 \u03b8\u03b5\u03c9\u03c1\u03b7\u03c4\u03b9\u03ba\u03bf\u03cd \u03bc\u03b1\u03b8\u03ae\u03bc\u03b1\u03c4\u03bf\u03c2.'
+
 
 # =============================================================================
 # CASCADING DATA APIs
@@ -137,6 +155,10 @@ def api_register_lab():
     if not student_am:
         return jsonify({'success': False, 'message': 'Authentication required'}), 401
 
+    eligible, elig_msg = _check_eligibility(student_am, lab_id)
+    if not eligible:
+        return jsonify({'success': False, 'message': elig_msg}), 403
+
     success, message, details = register_student_to_lab(student_am, lab_id, group_id)
     status_code = 200 if success else 400
     return jsonify({'success': success, 'message': message, 'details': details}), status_code
@@ -161,6 +183,10 @@ def api_change_group():
     student_am = session.get('schGrAcPersonID')
     if not student_am:
         return jsonify({'success': False, 'message': 'Authentication required'}), 401
+
+    eligible, elig_msg = _check_eligibility(student_am, lab_id)
+    if not eligible:
+        return jsonify({'success': False, 'message': elig_msg}), 403
 
     success, message, details = change_student_group(student_am, old_group_id, new_group_id, lab_id)
     status_code = 200 if success else 400
@@ -754,6 +780,98 @@ def api_edit_professor_profile():
         'data': {'prof_id': professor.prof_id, 'name': professor.name,
                  'office': professor.office, 'tel': professor.tel}
     })
+
+
+# =============================================================================
+# ADMIN ELIGIBILITY APIs
+# =============================================================================
+
+@api_bp.route('/api/admin/course/<int:course_id>/import-eligible', methods=['POST'])
+@require_permission('registrations', 'manage')
+def api_import_eligible(course_id):
+    """Upload a CSV of eligible student AMs for a course (admin only)."""
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Admin only'}), 403
+
+    if not Coursename.query.get(course_id):
+        return jsonify({'success': False, 'message': 'Course not found'}), 404
+
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'message': 'No file uploaded'}), 400
+
+    file = request.files['file']
+    if not file.filename:
+        return jsonify({'success': False, 'message': 'Empty filename'}), 400
+
+    try:
+        raw = file.read()
+        # Try UTF-8-BOM first, fall back to UTF-8, then latin-1
+        for enc in ('utf-8-sig', 'utf-8', 'latin-1'):
+            try:
+                text = raw.decode(enc)
+                break
+            except UnicodeDecodeError:
+                continue
+        else:
+            return jsonify({'success': False, 'message': 'Unable to decode file'}), 400
+
+        reader = csv.reader(io.StringIO(text))
+        ams = []
+        for row in reader:
+            if not row:
+                continue
+            val = row[0].strip()
+            # Skip header-like rows
+            try:
+                ams.append(int(val))
+            except ValueError:
+                continue
+
+        if not ams:
+            return jsonify({'success': False, 'message': 'No valid AMs found in file'}), 400
+
+        # Replace existing list
+        CourseEligibility.query.filter_by(course_id=course_id).delete()
+        for am in ams:
+            db.session.add(CourseEligibility(course_id=course_id, am=am))
+        db.session.commit()
+
+        audit_log('eligibility_imported',
+                  new_value=f'Course {course_id}: {len(ams)} students imported',
+                  reason='Admin uploaded eligibility CSV')
+
+        return jsonify({
+            'success': True,
+            'message': f'{len(ams)} eligible students imported',
+            'data': {'course_id': course_id, 'count': len(ams)}
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'Import failed'}), 500
+
+
+@api_bp.route('/api/admin/course/<int:course_id>/eligible')
+@require_permission('registrations', 'manage')
+def api_get_eligible(course_id):
+    """Get the count of eligible students for a course."""
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Admin only'}), 403
+    count = CourseEligibility.query.filter_by(course_id=course_id).count()
+    return jsonify({'success': True, 'data': {'course_id': course_id, 'count': count}})
+
+
+@api_bp.route('/api/admin/course/<int:course_id>/clear-eligible', methods=['DELETE'])
+@require_permission('registrations', 'manage')
+def api_clear_eligible(course_id):
+    """Remove all eligibility records for a course (opens registration to everyone)."""
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Admin only'}), 403
+    deleted = CourseEligibility.query.filter_by(course_id=course_id).delete()
+    db.session.commit()
+    audit_log('eligibility_cleared',
+              old_value=f'Course {course_id}: {deleted} records removed',
+              reason='Admin cleared eligibility list')
+    return jsonify({'success': True, 'message': f'{deleted} records cleared'})
 
 
 # =============================================================================
