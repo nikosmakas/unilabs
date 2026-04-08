@@ -47,6 +47,8 @@
                                     <th>Email</th>
                                     <th>Εξάμηνο</th>
                                     <th>Απουσίες</th>
+                                    <th>Βαθμός</th>
+                                    <th>Κατάσταση</th>
                                 </tr>
                             </thead>
                             <tbody id="groupStudentsBody"></tbody>
@@ -56,6 +58,7 @@
                 <div id="groupStudentsEmpty" class="alert alert-info d-none">
                     <i class="fas fa-info-circle me-2"></i>Δεν υπάρχουν εγγεγραμμένοι φοιτητές σε αυτό το τμήμα.
                 </div>
+                <div id="gradeToast" class="alert d-none mt-2" role="alert"></div>
             </div>
         </div>
     </div>
@@ -122,14 +125,69 @@
         }
     }
 
+    let currentModalGroupId = null;
+
+    function statusBadge(status) {
+        if (status === 'Ολοκληρωμένο') return '<span class="badge bg-success">Ολοκληρωμένο</span>';
+        if (status === 'Αποτυχία')     return '<span class="badge bg-danger">Αποτυχία</span>';
+        return '<span class="badge bg-warning text-dark">Σε Εξέλιξη</span>';
+    }
+
+    function gradeToStatus(grade) {
+        if (grade >= 5) return 'Ολοκληρωμένο';
+        if (grade > 0)  return 'Αποτυχία';
+        return 'Σε Εξέλιξη';
+    }
+
+    async function saveGrade(groupId, am, grade, row) {
+        const toast = document.getElementById('gradeToast');
+        const btn = row.querySelector('.save-grade-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        try {
+            const response = await fetch(`/api/professor/group/${groupId}/student/${am}/grade`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ grade: grade })
+            });
+            const data = await response.json();
+            if (data.success) {
+                const statusCell = row.querySelector('.status-cell');
+                statusCell.innerHTML = statusBadge(data.data.status);
+                toast.className = 'alert alert-success mt-2';
+                toast.innerHTML = `<i class="fas fa-check-circle me-1"></i>${data.data.am}: Βαθμός ${data.data.grade} — ${data.data.status}`;
+                toast.classList.remove('d-none');
+                btn.innerHTML = '<i class="fas fa-save"></i>';
+                btn.disabled = false;
+            } else {
+                toast.className = 'alert alert-danger mt-2';
+                toast.innerHTML = `<i class="fas fa-times-circle me-1"></i>${data.message}`;
+                toast.classList.remove('d-none');
+                btn.innerHTML = '<i class="fas fa-save"></i>';
+                btn.disabled = false;
+            }
+        } catch (error) {
+            console.error('Grade save error:', error);
+            toast.className = 'alert alert-danger mt-2';
+            toast.innerHTML = '<i class="fas fa-times-circle me-1"></i>Σφάλμα αποθήκευσης.';
+            toast.classList.remove('d-none');
+            btn.innerHTML = '<i class="fas fa-save"></i>';
+            btn.disabled = false;
+        }
+        setTimeout(() => toast.classList.add('d-none'), 4000);
+    }
+
     async function loadGroupStudents(groupId, groupName) {
+        currentModalGroupId = groupId;
         const modal = new bootstrap.Modal(document.getElementById('groupStudentsModal'));
         const loading = document.getElementById('groupStudentsLoading');
         const content = document.getElementById('groupStudentsContent');
         const empty = document.getElementById('groupStudentsEmpty');
+        const toast = document.getElementById('gradeToast');
         loading.classList.remove('d-none');
         content.classList.add('d-none');
         empty.classList.add('d-none');
+        toast.classList.add('d-none');
         modal.show();
         try {
             const response = await fetch(`/api/professor/group/${groupId}/students`);
@@ -143,10 +201,40 @@
                     const absencesBadge = student.absences === '-' ?
                         '<span class="badge bg-success">0</span>' :
                         `<span class="badge bg-warning text-dark">${student.absences.split(',').length}</span>`;
-                    html += `<tr><td>${student.am}</td><td>${student.name}</td><td><a href="mailto:${student.email}">${student.email}</a></td><td><span class="badge bg-secondary">${student.semester}ο</span></td><td>${absencesBadge}</td></tr>`;
+                    html += `<tr data-am="${student.am}">`
+                        + `<td>${student.am}</td>`
+                        + `<td>${student.name}</td>`
+                        + `<td><a href="mailto:${student.email}">${student.email}</a></td>`
+                        + `<td><span class="badge bg-secondary">${student.semester}ο</span></td>`
+                        + `<td>${absencesBadge}</td>`
+                        + `<td>`
+                        +   `<div class="input-group input-group-sm" style="width:120px">`
+                        +     `<input type="number" min="0" max="10" class="form-control form-control-sm grade-input" value="${student.grade}" aria-label="Grade for ${student.am}">`
+                        +     `<button class="btn btn-success btn-sm save-grade-btn" type="button" title="Αποθήκευση"><i class="fas fa-save"></i></button>`
+                        +   `</div>`
+                        + `</td>`
+                        + `<td class="status-cell">${statusBadge(student.status)}</td>`
+                        + `</tr>`;
                 });
                 document.getElementById('groupStudentsBody').innerHTML = html;
                 content.classList.remove('d-none');
+
+                document.querySelectorAll('.save-grade-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const row = this.closest('tr');
+                        const am = row.dataset.am;
+                        const grade = parseInt(row.querySelector('.grade-input').value);
+                        if (isNaN(grade) || grade < 0 || grade > 10) {
+                            const t = document.getElementById('gradeToast');
+                            t.className = 'alert alert-danger mt-2';
+                            t.innerHTML = '<i class="fas fa-times-circle me-1"></i>Ο βαθμός πρέπει να είναι 0-10.';
+                            t.classList.remove('d-none');
+                            setTimeout(() => t.classList.add('d-none'), 3000);
+                            return;
+                        }
+                        saveGrade(currentModalGroupId, am, grade, row);
+                    });
+                });
             } else {
                 empty.classList.remove('d-none');
             }

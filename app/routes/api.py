@@ -12,7 +12,7 @@ from auth import (
     get_academic_year, validate_registration_period,
     get_student_lab_status,
     register_student_to_lab, change_student_group, get_student_enrollments,
-    STATUS_FAILED
+    STATUS_FAILED, STATUS_IN_PROGRESS, STATUS_COMPLETED
 )
 from helpers import get_group_occupancy, get_student_notifications
 
@@ -290,6 +290,10 @@ def api_professor_group_students(group_id):
         if not ownership:
             return jsonify({'success': False, 'message': 'Access denied'}), 403
 
+    # Find the lab_id for this group
+    lab_rel = RelLabGroup.query.filter_by(group_id=group_id).first()
+    lab_id = lab_rel.lab_id if lab_rel else None
+
     students = db.session.query(Student).join(
         RelGroupStudent, Student.am == RelGroupStudent.am
     ).filter(RelGroupStudent.group_id == group_id).all()
@@ -299,16 +303,92 @@ def api_professor_group_students(group_id):
         absences = StudentMissesPerGroup.query.filter_by(
             am=student.am, group_id=group_id
         ).first()
+
+        grade = 0
+        status = STATUS_IN_PROGRESS
+        if lab_id:
+            lab_enroll = RelLabStudent.query.filter_by(
+                am=student.am, lab_id=lab_id
+            ).first()
+            if lab_enroll:
+                grade = lab_enroll.grade
+                status = lab_enroll.status
+
         result.append({
             'am': student.am,
             'name': student.name,
             'email': student.email,
             'semester': student.semester,
-            'absences': absences.misses if absences else '-'
+            'absences': absences.misses if absences else '-',
+            'grade': grade,
+            'status': status
         })
 
     result.sort(key=lambda x: x['name'])
     return jsonify({'success': True, 'group_id': group_id, 'count': len(result), 'data': result})
+
+
+@api_bp.route('/api/professor/group/<int:group_id>/student/<int:am>/grade', methods=['PUT'])
+@require_permission('registrations', 'manage')
+def api_update_student_grade(group_id, am):
+    """Update a student's grade and auto-set status."""
+    if session.get('role') not in ['professor', 'admin']:
+        return jsonify({'success': False, 'message': 'Professors only'}), 403
+
+    if session.get('role') == 'professor':
+        ownership = RelGroupProf.query.filter_by(
+            prof_id=session.get('schGrAcPersonID'), group_id=group_id
+        ).first()
+        if not ownership:
+            return jsonify({'success': False, 'message': 'Access denied'}), 403
+
+    data = request.get_json()
+    if data is None or 'grade' not in data:
+        return jsonify({'success': False, 'message': 'Grade is required'}), 400
+
+    try:
+        grade = int(data['grade'])
+    except (ValueError, TypeError):
+        return jsonify({'success': False, 'message': 'Grade must be a number'}), 400
+
+    if grade < 0 or grade > 10:
+        return jsonify({'success': False, 'message': 'Grade must be between 0 and 10'}), 400
+
+    lab_rel = RelLabGroup.query.filter_by(group_id=group_id).first()
+    if not lab_rel:
+        return jsonify({'success': False, 'message': 'Lab not found for this group'}), 404
+
+    lab_enroll = RelLabStudent.query.filter_by(am=am, lab_id=lab_rel.lab_id).first()
+    if not lab_enroll:
+        return jsonify({'success': False, 'message': 'Student not enrolled in this lab'}), 404
+
+    old_grade = lab_enroll.grade
+    old_status = lab_enroll.status
+
+    lab_enroll.grade = grade
+    if grade >= 5:
+        lab_enroll.status = STATUS_COMPLETED
+    elif grade > 0:
+        lab_enroll.status = STATUS_FAILED
+    else:
+        lab_enroll.status = STATUS_IN_PROGRESS
+
+    db.session.commit()
+
+    audit_log('grade_updated',
+              old_value=f"grade={old_grade}, status={old_status}",
+              new_value=f"grade={lab_enroll.grade}, status={lab_enroll.status}",
+              reason=f"Grade set for student {am} in group {group_id}")
+
+    return jsonify({
+        'success': True,
+        'message': 'Grade updated',
+        'data': {
+            'am': am,
+            'grade': lab_enroll.grade,
+            'status': lab_enroll.status
+        }
+    })
 
 
 # =============================================================================
