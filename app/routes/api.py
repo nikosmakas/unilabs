@@ -300,9 +300,15 @@ def api_professor_group_students(group_id):
 
     result = []
     for student in students:
-        absences = StudentMissesPerGroup.query.filter_by(
+        absence_rec = StudentMissesPerGroup.query.filter_by(
             am=student.am, group_id=group_id
         ).first()
+
+        raw_misses = absence_rec.misses if absence_rec else ''
+        if raw_misses:
+            absences_list = [d.strip() for d in raw_misses.split(',') if d.strip()]
+        else:
+            absences_list = []
 
         grade = 0
         status = STATUS_IN_PROGRESS
@@ -319,7 +325,9 @@ def api_professor_group_students(group_id):
             'name': student.name,
             'email': student.email,
             'semester': student.semester,
-            'absences': absences.misses if absences else '-',
+            'absences': raw_misses if raw_misses else '-',
+            'absences_list': absences_list,
+            'absences_count': len(absences_list),
             'grade': grade,
             'status': status
         })
@@ -389,6 +397,125 @@ def api_update_student_grade(group_id, am):
             'status': lab_enroll.status
         }
     })
+
+
+# =============================================================================
+# ABSENCE MANAGEMENT APIs
+# =============================================================================
+
+def _check_group_ownership(group_id):
+    """Verify the caller is professor-owner of this group, or admin. Returns error tuple or None."""
+    if session.get('role') not in ['professor', 'admin']:
+        return jsonify({'success': False, 'message': 'Professors only'}), 403
+    if session.get('role') == 'professor':
+        if not RelGroupProf.query.filter_by(
+            prof_id=session.get('schGrAcPersonID'), group_id=group_id
+        ).first():
+            return jsonify({'success': False, 'message': 'Access denied'}), 403
+    return None
+
+
+@api_bp.route('/api/professor/group/<int:group_id>/student/<int:am>/absence', methods=['POST'])
+@require_permission('absences', 'edit_group_absences')
+def api_add_absence(group_id, am):
+    """Add an absence date for a student in a group."""
+    err = _check_group_ownership(group_id)
+    if err:
+        return err
+
+    data = request.get_json() or {}
+    date_str = data.get('date', '').strip()
+    if not date_str:
+        date_str = datetime.now().strftime('%d/%m/%Y')
+
+    # Verify the student is actually in this group
+    if not RelGroupStudent.query.filter_by(am=am, group_id=group_id).first():
+        return jsonify({'success': False, 'message': 'Student not in this group'}), 404
+
+    try:
+        rec = StudentMissesPerGroup.query.filter_by(am=am, group_id=group_id).first()
+        if rec:
+            existing = [d.strip() for d in rec.misses.split(',') if d.strip()]
+            if date_str in existing:
+                return jsonify({'success': False, 'message': 'Absence already recorded for this date'}), 400
+            existing.append(date_str)
+            rec.misses = ', '.join(existing)
+        else:
+            rec = StudentMissesPerGroup(am=am, group_id=group_id, misses=date_str)
+            db.session.add(rec)
+
+        db.session.commit()
+
+        absences_list = [d.strip() for d in rec.misses.split(',') if d.strip()]
+
+        audit_log('absence_added',
+                  new_value=f"Student {am} group {group_id}: {date_str}",
+                  reason='Professor recorded absence')
+
+        return jsonify({
+            'success': True,
+            'message': 'Absence recorded',
+            'data': {
+                'am': am,
+                'date': date_str,
+                'absences_list': absences_list,
+                'absences_count': len(absences_list)
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'Failed to record absence'}), 500
+
+
+@api_bp.route('/api/professor/group/<int:group_id>/student/<int:am>/absence', methods=['DELETE'])
+@require_permission('absences', 'edit_group_absences')
+def api_remove_absence(group_id, am):
+    """Remove a specific absence date for a student in a group."""
+    err = _check_group_ownership(group_id)
+    if err:
+        return err
+
+    data = request.get_json()
+    if not data or not data.get('date', '').strip():
+        return jsonify({'success': False, 'message': 'Date is required'}), 400
+
+    date_str = data['date'].strip()
+
+    try:
+        rec = StudentMissesPerGroup.query.filter_by(am=am, group_id=group_id).first()
+        if not rec:
+            return jsonify({'success': False, 'message': 'No absences found'}), 404
+
+        existing = [d.strip() for d in rec.misses.split(',') if d.strip()]
+        if date_str not in existing:
+            return jsonify({'success': False, 'message': 'Date not found in absences'}), 404
+
+        existing.remove(date_str)
+
+        if existing:
+            rec.misses = ', '.join(existing)
+        else:
+            db.session.delete(rec)
+
+        db.session.commit()
+
+        audit_log('absence_removed',
+                  old_value=f"Student {am} group {group_id}: {date_str}",
+                  reason='Professor removed absence')
+
+        return jsonify({
+            'success': True,
+            'message': 'Absence removed',
+            'data': {
+                'am': am,
+                'date': date_str,
+                'absences_list': existing,
+                'absences_count': len(existing)
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'Failed to remove absence'}), 500
 
 
 # =============================================================================

@@ -400,6 +400,17 @@ body.bg-dark .student-list-item {
     border-bottom-color: #495057;
 }
 
+/* Absence date badges inside the students modal */
+.absence-cell .btn-close-sm {
+    font-size: 0.5em;
+    padding: 0.15em;
+    vertical-align: middle;
+}
+
+.absence-dates-list {
+    line-height: 1.8;
+}
+
 /* =============================================================================
    MODAL OVERLAY FIX
    Ensure modals render above the fixed top-bar (z-index 1100)

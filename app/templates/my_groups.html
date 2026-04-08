@@ -133,14 +133,18 @@
         return '<span class="badge bg-warning text-dark">Σε Εξέλιξη</span>';
     }
 
-    function gradeToStatus(grade) {
-        if (grade >= 5) return 'Ολοκληρωμένο';
-        if (grade > 0)  return 'Αποτυχία';
-        return 'Σε Εξέλιξη';
+    function showToast(type, message) {
+        const toast = document.getElementById('gradeToast');
+        toast.className = `alert alert-${type} mt-2`;
+        const icon = type === 'success' ? 'check-circle' : 'times-circle';
+        toast.innerHTML = `<i class="fas fa-${icon} me-1"></i>${message}`;
+        toast.classList.remove('d-none');
+        setTimeout(() => toast.classList.add('d-none'), 4000);
     }
 
+    // ── Grade helpers ──────────────────────────────────────────
+
     async function saveGrade(groupId, am, grade, row) {
-        const toast = document.getElementById('gradeToast');
         const btn = row.querySelector('.save-grade-btn');
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
@@ -152,30 +156,108 @@
             });
             const data = await response.json();
             if (data.success) {
-                const statusCell = row.querySelector('.status-cell');
-                statusCell.innerHTML = statusBadge(data.data.status);
-                toast.className = 'alert alert-success mt-2';
-                toast.innerHTML = `<i class="fas fa-check-circle me-1"></i>${data.data.am}: Βαθμός ${data.data.grade} — ${data.data.status}`;
-                toast.classList.remove('d-none');
-                btn.innerHTML = '<i class="fas fa-save"></i>';
-                btn.disabled = false;
+                row.querySelector('.status-cell').innerHTML = statusBadge(data.data.status);
+                showToast('success', `${data.data.am}: Βαθμός ${data.data.grade} — ${data.data.status}`);
             } else {
-                toast.className = 'alert alert-danger mt-2';
-                toast.innerHTML = `<i class="fas fa-times-circle me-1"></i>${data.message}`;
-                toast.classList.remove('d-none');
-                btn.innerHTML = '<i class="fas fa-save"></i>';
-                btn.disabled = false;
+                showToast('danger', data.message);
             }
         } catch (error) {
             console.error('Grade save error:', error);
-            toast.className = 'alert alert-danger mt-2';
-            toast.innerHTML = '<i class="fas fa-times-circle me-1"></i>Σφάλμα αποθήκευσης.';
-            toast.classList.remove('d-none');
-            btn.innerHTML = '<i class="fas fa-save"></i>';
-            btn.disabled = false;
+            showToast('danger', 'Σφάλμα αποθήκευσης.');
         }
-        setTimeout(() => toast.classList.add('d-none'), 4000);
+        btn.innerHTML = '<i class="fas fa-save"></i>';
+        btn.disabled = false;
     }
+
+    // ── Absence helpers ────────────────────────────────────────
+
+    function renderAbsenceDates(dates) {
+        if (!dates.length) return '<em class="text-muted small">Καμία απουσία</em>';
+        return dates.map(d =>
+            `<span class="badge bg-light text-dark border me-1 mb-1">`
+            + `${d} <button type="button" class="btn-close btn-close-sm ms-1 remove-absence-btn" data-date="${d}" aria-label="Remove"></button>`
+            + `</span>`
+        ).join('');
+    }
+
+    function buildAbsenceCell(student) {
+        const count = student.absences_count;
+        const badgeClass = count === 0 ? 'bg-success' : 'bg-warning text-dark';
+        return `<div class="absence-cell">`
+            + `<span class="badge ${badgeClass} absence-count-badge" role="button" title="Προβολή απουσιών" style="cursor:pointer">${count}</span>`
+            + ` <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1 add-absence-btn" title="Καταγραφή απουσίας σήμερα"><i class="fas fa-plus fa-xs"></i></button>`
+            + `<div class="absence-dates-list mt-1 d-none">${renderAbsenceDates(student.absences_list)}</div>`
+            + `</div>`;
+    }
+
+    async function addAbsence(groupId, am, row, dateStr) {
+        const addBtn = row.querySelector('.add-absence-btn');
+        addBtn.disabled = true;
+        try {
+            const body = dateStr ? { date: dateStr } : {};
+            const response = await fetch(`/api/professor/group/${groupId}/student/${am}/absence`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const data = await response.json();
+            if (data.success) {
+                updateAbsenceUI(row, data.data.absences_list, data.data.absences_count);
+                showToast('success', `ΑΜ ${am}: Απουσία ${data.data.date} καταχωρήθηκε`);
+            } else {
+                showToast('danger', data.message);
+            }
+        } catch (error) {
+            console.error('Add absence error:', error);
+            showToast('danger', 'Σφάλμα καταχώρησης απουσίας.');
+        }
+        addBtn.disabled = false;
+    }
+
+    async function removeAbsence(groupId, am, dateStr, row) {
+        try {
+            const response = await fetch(`/api/professor/group/${groupId}/student/${am}/absence`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date: dateStr })
+            });
+            const data = await response.json();
+            if (data.success) {
+                updateAbsenceUI(row, data.data.absences_list, data.data.absences_count);
+                showToast('success', `ΑΜ ${am}: Απουσία ${dateStr} αφαιρέθηκε`);
+            } else {
+                showToast('danger', data.message);
+            }
+        } catch (error) {
+            console.error('Remove absence error:', error);
+            showToast('danger', 'Σφάλμα αφαίρεσης απουσίας.');
+        }
+    }
+
+    function updateAbsenceUI(row, absencesList, count) {
+        const badge = row.querySelector('.absence-count-badge');
+        badge.textContent = count;
+        badge.className = `badge ${count === 0 ? 'bg-success' : 'bg-warning text-dark'} absence-count-badge`;
+        badge.setAttribute('style', 'cursor:pointer');
+        const datesList = row.querySelector('.absence-dates-list');
+        datesList.innerHTML = renderAbsenceDates(absencesList);
+        // Keep the list visible if it was already open
+        if (!datesList.classList.contains('d-none')) {
+            bindRemoveButtons(row);
+        }
+    }
+
+    function bindRemoveButtons(row) {
+        const am = row.dataset.am;
+        row.querySelectorAll('.remove-absence-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                removeAbsence(currentModalGroupId, am, this.dataset.date, row);
+            });
+        });
+    }
+
+    // ── Main table renderer ────────────────────────────────────
 
     async function loadGroupStudents(groupId, groupName) {
         currentModalGroupId = groupId;
@@ -198,15 +280,12 @@
                 document.getElementById('groupStudentsCount').textContent = `${data.count} φοιτητές`;
                 let html = '';
                 data.data.forEach(student => {
-                    const absencesBadge = student.absences === '-' ?
-                        '<span class="badge bg-success">0</span>' :
-                        `<span class="badge bg-warning text-dark">${student.absences.split(',').length}</span>`;
                     html += `<tr data-am="${student.am}">`
                         + `<td>${student.am}</td>`
                         + `<td>${student.name}</td>`
                         + `<td><a href="mailto:${student.email}">${student.email}</a></td>`
                         + `<td><span class="badge bg-secondary">${student.semester}ο</span></td>`
-                        + `<td>${absencesBadge}</td>`
+                        + `<td>${buildAbsenceCell(student)}</td>`
                         + `<td>`
                         +   `<div class="input-group input-group-sm" style="width:120px">`
                         +     `<input type="number" min="0" max="10" class="form-control form-control-sm grade-input" value="${student.grade}" aria-label="Grade for ${student.am}">`
@@ -219,20 +298,37 @@
                 document.getElementById('groupStudentsBody').innerHTML = html;
                 content.classList.remove('d-none');
 
+                // Grade save buttons
                 document.querySelectorAll('.save-grade-btn').forEach(btn => {
                     btn.addEventListener('click', function() {
                         const row = this.closest('tr');
                         const am = row.dataset.am;
                         const grade = parseInt(row.querySelector('.grade-input').value);
                         if (isNaN(grade) || grade < 0 || grade > 10) {
-                            const t = document.getElementById('gradeToast');
-                            t.className = 'alert alert-danger mt-2';
-                            t.innerHTML = '<i class="fas fa-times-circle me-1"></i>Ο βαθμός πρέπει να είναι 0-10.';
-                            t.classList.remove('d-none');
-                            setTimeout(() => t.classList.add('d-none'), 3000);
+                            showToast('danger', 'Ο βαθμός πρέπει να είναι 0-10.');
                             return;
                         }
                         saveGrade(currentModalGroupId, am, grade, row);
+                    });
+                });
+
+                // Absence add buttons
+                document.querySelectorAll('.add-absence-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const row = this.closest('tr');
+                        addAbsence(currentModalGroupId, row.dataset.am, row, '');
+                    });
+                });
+
+                // Absence count badge toggles the dates list
+                document.querySelectorAll('.absence-count-badge').forEach(badge => {
+                    badge.addEventListener('click', function() {
+                        const row = this.closest('tr');
+                        const datesList = row.querySelector('.absence-dates-list');
+                        datesList.classList.toggle('d-none');
+                        if (!datesList.classList.contains('d-none')) {
+                            bindRemoveButtons(row);
+                        }
                     });
                 });
             } else {
