@@ -290,14 +290,12 @@ def api_professor_group_students(group_id):
         if not ownership:
             return jsonify({'success': False, 'message': 'Access denied'}), 403
 
-    students = db.session.query(
-        Student, RelGroupStudent.group_reg_daymonth, RelGroupStudent.group_reg_year
-    ).join(
+    students = db.session.query(Student).join(
         RelGroupStudent, Student.am == RelGroupStudent.am
     ).filter(RelGroupStudent.group_id == group_id).all()
 
     result = []
-    for student, reg_date, reg_year in students:
+    for student in students:
         absences = StudentMissesPerGroup.query.filter_by(
             am=student.am, group_id=group_id
         ).first()
@@ -464,6 +462,89 @@ def api_student_notifications():
 
     notifications = get_student_notifications(student_am)
     return jsonify({'success': True, 'count': len(notifications), 'data': notifications})
+
+
+# =============================================================================
+# PROFESSOR / ADMIN MANAGEMENT APIs
+# =============================================================================
+
+@api_bp.route('/api/labs/<int:lab_id>/description', methods=['PUT'])
+@require_permission('labs', 'edit')
+def api_edit_lab_description(lab_id):
+    """Edit a lab description. Professors can only edit labs assigned to them."""
+    lab = CourseLab.query.get(lab_id)
+    if not lab:
+        return jsonify({'success': False, 'message': 'Lab not found'}), 404
+
+    if session.get('role') == 'professor':
+        prof_id = session.get('schGrAcPersonID')
+        owns = db.session.query(RelGroupProf).join(
+            RelLabGroup, RelGroupProf.group_id == RelLabGroup.group_id
+        ).filter(
+            RelGroupProf.prof_id == prof_id,
+            RelLabGroup.lab_id == lab_id
+        ).first()
+        if not owns:
+            return jsonify({'success': False, 'message': 'Not assigned to this lab'}), 403
+
+    data = request.get_json()
+    if not data or not data.get('description', '').strip():
+        return jsonify({'success': False, 'message': 'Description is required'}), 400
+
+    old_desc = lab.description
+    lab.description = data['description'].strip()
+    db.session.commit()
+
+    audit_log('lab_description_updated',
+              old_value=old_desc, new_value=lab.description,
+              reason=f"Lab {lab_id} description edited")
+
+    return jsonify({'success': True, 'message': 'Description updated',
+                    'data': {'lab_id': lab.lab_id, 'description': lab.description}})
+
+
+@api_bp.route('/api/professor/profile', methods=['PUT'])
+@require_permission('professors_list', 'edit_own_profile')
+def api_edit_professor_profile():
+    """Professor edits own profile (office, tel). Admin can edit any via ?prof_id=."""
+    prof_id = request.args.get('prof_id', type=int)
+
+    if session.get('role') == 'admin' and prof_id:
+        professor = Professor.query.get(prof_id)
+    else:
+        professor = Professor.query.get(session.get('schGrAcPersonID'))
+
+    if not professor:
+        return jsonify({'success': False, 'message': 'Professor not found'}), 404
+
+    if session.get('role') == 'professor' and str(professor.prof_id) != session.get('schGrAcPersonID'):
+        return jsonify({'success': False, 'message': 'Cannot edit another professor'}), 403
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'message': 'No data provided'}), 400
+
+    old_values = f"office={professor.office}, tel={professor.tel}"
+
+    office = data.get('office', '').strip()
+    tel = data.get('tel', '').strip()
+    if office:
+        professor.office = office
+    if tel:
+        professor.tel = tel
+
+    db.session.commit()
+
+    audit_log('professor_profile_updated',
+              old_value=old_values,
+              new_value=f"office={professor.office}, tel={professor.tel}",
+              reason="Professor profile edited")
+
+    return jsonify({
+        'success': True, 'message': 'Profile updated',
+        'data': {'prof_id': professor.prof_id, 'name': professor.name,
+                 'office': professor.office, 'tel': professor.tel}
+    })
 
 
 # =============================================================================

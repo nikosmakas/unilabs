@@ -5,7 +5,7 @@ from models import (
     RelLabGroup, RelLabStudent, StudentMissesPerGroup
 )
 from auth import (
-    require_permission, get_academic_year, get_student_enrollments
+    require_permission, require_role, get_academic_year, get_student_enrollments
 )
 from helpers import get_group_occupancy
 
@@ -38,7 +38,7 @@ def registration():
 
 
 @views_bp.route('/my-enrollments')
-@require_permission('registrations', 'view')
+@require_role('student')
 def my_enrollments():
     """Current student enrollments."""
     academic_year = get_academic_year()

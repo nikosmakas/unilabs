@@ -34,7 +34,9 @@
       "view": ["guest", "student", "professor", "admin"],
       "link_to_external_profile": ["guest", "student", "professor", "admin"],
       "visible_filter": ["professor", "admin"],
-      "notes": "Link opens external profile with professor.id parameter."
+      "edit_own_profile": ["professor", "admin"],
+      "edit_any": ["admin"],
+      "notes": "Professors edit own profile; admins edit any professor."
     },
     "registrations": {
       "view": ["student", "professor", "admin"],

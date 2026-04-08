@@ -22,7 +22,7 @@
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <h5 class="card-title mb-1">{{ enrollment.lab_name }}</h5>
-                        <span class="badge bg-secondary me-1">{{ enrollment.semester }}ο Εξάμηνο</span>
+                        <span class="badge bg-secondary me-1">{{ enrollment.semester }}</span>
                         <small class="text-muted">{{ enrollment.course_name }}</small>
                     </div>
                     <span class="badge status-badge 
@@ -51,7 +51,7 @@
                 {% if enrollment.status == 'Σε Εξέλιξη' %}
                 <hr>
                 <div class="d-flex gap-2">
-                    <a href="{{ url_for('views_bp.registration') }}" class="btn btn-sm btn-outline-primary">
+                    <a href="{{ url_for('views_bp.registration', lab_id=enrollment.lab_id, group_id=enrollment.group_id) }}" class="btn btn-sm btn-outline-primary">
                         <i class="fas fa-exchange-alt me-1"></i>Αλλαγή Τμήματος
                     </a>
                     <button type="button" class="btn btn-sm btn-outline-danger unenroll-btn"

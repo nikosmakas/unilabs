@@ -111,7 +111,64 @@
 
     document.addEventListener('DOMContentLoaded', async function() {
         await loadSemesters();
+
+        // Pre-select from URL params (e.g. redirected from Change Group)
+        const params = new URLSearchParams(window.location.search);
+        const preLabId = params.get('lab_id');
+        const preGroupId = params.get('group_id');
+        if (preLabId) {
+            await preselectLab(preLabId, preGroupId);
+        }
     });
+
+    async function preselectLab(labId, currentGroupId) {
+        try {
+            // Find which course and semester this lab belongs to
+            const semResponse = await fetch('/api/semesters');
+            const semData = await semResponse.json();
+            if (!semData.success) return;
+
+            for (const semester of semData.data) {
+                const courseResponse = await fetch(`/api/courses/${semester.id}`);
+                const courseData = await courseResponse.json();
+                if (!courseData.success) continue;
+
+                for (const course of courseData.data) {
+                    const labResponse = await fetch(`/api/labs/${course.course_id}`);
+                    const labData = await labResponse.json();
+                    if (!labData.success) continue;
+
+                    const targetLab = labData.data.find(l => l.lab_id == labId);
+                    if (!targetLab) continue;
+
+                    // Found: semester -> course -> lab. Trigger the cascade.
+                    const semSelect = document.getElementById('semesterSelect');
+                    semSelect.value = semester.id;
+                    semSelect.dispatchEvent(new Event('change'));
+                    await new Promise(r => setTimeout(r, 200));
+
+                    const courseSelect = document.getElementById('courseSelect');
+                    courseSelect.value = course.course_id;
+                    courseSelect.dispatchEvent(new Event('change'));
+                    await new Promise(r => setTimeout(r, 200));
+
+                    const labSelect = document.getElementById('labSelect');
+                    labSelect.value = labId;
+                    labSelect.dispatchEvent(new Event('change'));
+                    await new Promise(r => setTimeout(r, 400));
+
+                    // Lock upper selects so user can only pick a new group
+                    semSelect.disabled = true;
+                    courseSelect.disabled = true;
+                    labSelect.disabled = true;
+
+                    return;
+                }
+            }
+        } catch (error) {
+            console.error('Pre-select error:', error);
+        }
+    }
 
     async function loadSemesters() {
         try {
@@ -123,7 +180,7 @@
                 data.data.forEach(semester => {
                     const option = document.createElement('option');
                     option.value = semester.id;
-                    option.textContent = semester.name + 'ο Εξάμηνο';
+                    option.textContent = semester.name;
                     select.appendChild(option);
                 });
             }

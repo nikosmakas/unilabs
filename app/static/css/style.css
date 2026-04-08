@@ -234,6 +234,34 @@ body.bg-dark .top-bar-title h4 {
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
 }
 
+.professor-card .card-body {
+    color: #212529;
+}
+
+.professor-card .card-body h6 {
+    color: #212529;
+}
+
+.professor-card .card-body .text-muted {
+    color: #6c757d !important;
+}
+
+body.bg-dark .professor-card {
+    background: #2d3238;
+}
+
+body.bg-dark .professor-card .card-body {
+    color: #e9ecef;
+}
+
+body.bg-dark .professor-card .card-body h6 {
+    color: #f8f9fa;
+}
+
+body.bg-dark .professor-card .card-body .text-muted {
+    color: #adb5bd !important;
+}
+
 /* =============================================================================
    USER INFO BOX (Sidebar)
    ============================================================================= */
@@ -279,6 +307,53 @@ body.bg-dark .table {
 
 body.bg-dark .table-striped > tbody > tr:nth-of-type(odd) {
     background-color: rgba(255,255,255,0.05);
+}
+
+body.bg-dark .text-muted {
+    color: #adb5bd !important;
+}
+
+body.bg-dark .card-title,
+body.bg-dark h1, body.bg-dark h2, body.bg-dark h3,
+body.bg-dark h4, body.bg-dark h5, body.bg-dark h6 {
+    color: #f8f9fa;
+}
+
+body.bg-dark .form-label {
+    color: #dee2e6;
+}
+
+body.bg-dark .form-select,
+body.bg-dark .form-control {
+    background-color: #3a3f44;
+    border-color: #495057;
+    color: #e9ecef;
+}
+
+body.bg-dark .modal-content {
+    background-color: #2d3238;
+    color: #e9ecef;
+}
+
+body.bg-dark .modal-header {
+    border-color: #495057;
+}
+
+body.bg-dark .modal-footer {
+    border-color: #495057;
+}
+
+body.bg-dark .breadcrumb-item,
+body.bg-dark .breadcrumb-item a {
+    color: #adb5bd;
+}
+
+body.bg-dark .breadcrumb-item.active {
+    color: #e9ecef;
+}
+
+body.bg-dark .alert {
+    border-color: #495057;
 }
 
 /* =============================================================================
