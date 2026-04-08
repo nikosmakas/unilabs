@@ -1,0 +1,49 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Τμήματα{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active" aria-current="page">Τμήματα</li>
+{% endblock %}
+
+{% block content %}
+<h2><i class="fas fa-users me-2"></i>Τμήματα</h2>
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Εργαστήριο</th>
+                <th>Ώρα/Μέρα</th>
+                <th>Έτος</th>
+                <th>Πληρότητα</th>
+                <th>Διαθέσιμες Θέσεις</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for group in groups %}
+            <tr class="{% if group.is_full %}table-danger{% endif %}">
+                <td>{{ group.group_id }}</td>
+                <td><strong>{{ group.lab_name }}</strong></td>
+                <td>{{ group.daytime }}</td>
+                <td>{{ group.year }}</td>
+                <td>
+                    <div class="progress occupancy-bar occupancy-bar-inline">
+                        <div class="progress-bar {% if group.occupancy_percentage >= 90 %}bg-danger{% elif group.occupancy_percentage >= 70 %}bg-warning{% else %}bg-success{% endif %}" 
+                             style="width: {{ group.occupancy_percentage }}%"></div>
+                    </div>
+                    <small>{{ group.occupancy_percentage|round(0) }}%</small>
+                </td>
+                <td>
+                    {% if group.is_full %}
+                    <span class="badge bg-danger">Πλήρες</span>
+                    {% else %}
+                    <span class="badge bg-success">{{ group.available_spots }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

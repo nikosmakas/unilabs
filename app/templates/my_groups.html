@@ -1,0 +1,162 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Τα Τμήματά μου{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active" aria-current="page">Τα Τμήματά μου</li>
+{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">
+    <i class="fas fa-chalkboard-teacher me-2"></i>Τα Τμήματά μου
+</h2>
+
+<div id="myGroupsLoading" class="text-center py-4">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Φόρτωση...</span>
+    </div>
+</div>
+
+<div id="myGroupsContainer" class="row d-none"></div>
+
+<!-- Modal για προβολή φοιτητών τμήματος -->
+<div class="modal fade" id="groupStudentsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-users me-2"></i>Φοιτητές Τμήματος
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="groupStudentsLoading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+                <div id="groupStudentsContent" class="d-none">
+                    <div class="d-flex justify-content-between mb-3">
+                        <span id="groupStudentsInfo"></span>
+                        <span class="badge bg-info" id="groupStudentsCount"></span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="groupStudentsTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Α.Μ.</th>
+                                    <th>Ονοματεπώνυμο</th>
+                                    <th>Email</th>
+                                    <th>Εξάμηνο</th>
+                                    <th>Απουσίες</th>
+                                </tr>
+                            </thead>
+                            <tbody id="groupStudentsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div id="groupStudentsEmpty" class="alert alert-info d-none">
+                    <i class="fas fa-info-circle me-2"></i>Δεν υπάρχουν εγγεγραμμένοι φοιτητές σε αυτό το τμήμα.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        loadProfessorGroups();
+    });
+
+    async function loadProfessorGroups() {
+        const container = document.getElementById('myGroupsContainer');
+        const loading = document.getElementById('myGroupsLoading');
+        loading.classList.remove('d-none');
+        container.classList.add('d-none');
+        try {
+            const response = await fetch('/api/professor/my-groups');
+            const data = await response.json();
+            loading.classList.add('d-none');
+            container.classList.remove('d-none');
+            if (data.success && data.data.length > 0) {
+                let html = '';
+                data.data.forEach(group => {
+                    const occupancy = group.occupancy;
+                    const progressClass = occupancy.percentage >= 90 ? 'bg-danger' : occupancy.percentage >= 70 ? 'bg-warning' : 'bg-success';
+                    html += `
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card group-students-card h-100">
+                                <div class="card-header"><strong>${group.lab_name}</strong></div>
+                                <div class="card-body">
+                                    <p class="mb-2"><i class="fas fa-clock me-2"></i>${group.daytime}</p>
+                                    <div class="mb-3">
+                                        <small class="text-muted">Πληρότητα:</small>
+                                        <div class="progress occupancy-bar mt-1">
+                                            <div class="progress-bar ${progressClass}" style="width: ${occupancy.percentage}%"></div>
+                                        </div>
+                                        <small>${occupancy.current}/${occupancy.max} φοιτητές</small>
+                                    </div>
+                                    <button class="btn btn-primary btn-sm w-100 view-students-btn"
+                                            data-group-id="${group.group_id}"
+                                            data-group-name="${group.lab_name} - ${group.daytime}">
+                                        <i class="fas fa-users me-1"></i>Προβολή Φοιτητών
+                                    </button>
+                                </div>
+                            </div>
+                        </div>`;
+                });
+                container.innerHTML = html;
+                document.querySelectorAll('.view-students-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        loadGroupStudents(this.dataset.groupId, this.dataset.groupName);
+                    });
+                });
+            } else {
+                container.innerHTML = `<div class="col-12"><div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>Δεν έχετε ανατεθειμένα τμήματα για το τρέχον ακαδημαϊκό έτος.</div></div>`;
+            }
+        } catch (error) {
+            console.error('Error loading professor groups:', error);
+            loading.classList.add('d-none');
+            container.classList.remove('d-none');
+            container.innerHTML = `<div class="col-12"><div class="alert alert-danger"><i class="fas fa-exclamation-circle me-2"></i>Σφάλμα φόρτωσης τμημάτων.</div></div>`;
+        }
+    }
+
+    async function loadGroupStudents(groupId, groupName) {
+        const modal = new bootstrap.Modal(document.getElementById('groupStudentsModal'));
+        const loading = document.getElementById('groupStudentsLoading');
+        const content = document.getElementById('groupStudentsContent');
+        const empty = document.getElementById('groupStudentsEmpty');
+        loading.classList.remove('d-none');
+        content.classList.add('d-none');
+        empty.classList.add('d-none');
+        modal.show();
+        try {
+            const response = await fetch(`/api/professor/group/${groupId}/students`);
+            const data = await response.json();
+            loading.classList.add('d-none');
+            if (data.success && data.data.length > 0) {
+                document.getElementById('groupStudentsInfo').textContent = groupName;
+                document.getElementById('groupStudentsCount').textContent = `${data.count} φοιτητές`;
+                let html = '';
+                data.data.forEach(student => {
+                    const absencesBadge = student.absences === '-' ?
+                        '<span class="badge bg-success">0</span>' :
+                        `<span class="badge bg-warning text-dark">${student.absences.split(',').length}</span>`;
+                    html += `<tr><td>${student.am}</td><td>${student.name}</td><td><a href="mailto:${student.email}">${student.email}</a></td><td><span class="badge bg-secondary">${student.semester}ο</span></td><td>${absencesBadge}</td></tr>`;
+                });
+                document.getElementById('groupStudentsBody').innerHTML = html;
+                content.classList.remove('d-none');
+            } else {
+                empty.classList.remove('d-none');
+            }
+        } catch (error) {
+            console.error('Error loading group students:', error);
+            loading.classList.add('d-none');
+            empty.classList.remove('d-none');
+            empty.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>Σφάλμα φόρτωσης φοιτητών.';
+            empty.className = 'alert alert-danger';
+        }
+    }
+</script>
+{% endblock %}

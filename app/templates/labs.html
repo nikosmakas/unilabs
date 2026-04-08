@@ -1,0 +1,35 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Εργαστήρια{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active" aria-current="page">Εργαστήρια</li>
+{% endblock %}
+
+{% block content %}
+<h2><i class="fas fa-flask me-2"></i>Εργαστήρια</h2>
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Όνομα</th>
+                <th>Περιγραφή</th>
+                <th>Μέγ. Φοιτητές</th>
+                <th>Όριο Εγγραφών</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for lab in labs %}
+            <tr>
+                <td>{{ lab.lab_id }}</td>
+                <td><strong>{{ lab.name }}</strong></td>
+                <td>{{ lab.description }}</td>
+                <td><span class="badge bg-info">{{ lab.maxusers }}</span></td>
+                <td>{{ lab.reg_limit }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

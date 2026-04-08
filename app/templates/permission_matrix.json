@@ -24,7 +24,7 @@
     "students_list": {
       "view_full": ["admin"],
       "view_own_profile": ["student"],
-      "view_professor_students": ["professor"],
+      "view_professor_students": ["professor", "admin"],
       "create": [],
       "edit": ["student", "admin"],
       "delete": ["admin"],

@@ -31,6 +31,16 @@ init_app(app)
 
 AUTH_MODE = app.config['AUTH_MODE']
 
+@app.context_processor
+def inject_common_vars():
+    """Inject common template variables into all templates"""
+    return {
+        'name': session.get('name', 'Guest'),
+        'role': session.get('role', 'guest'),
+        'AUTH_MODE': app.config['AUTH_MODE'],
+        'academic_year': get_academic_year(),
+    }
+
 FAKE_USERS = {
     'student1': {
         'name': 'Test Student',
@@ -262,23 +272,67 @@ def logout():
     return redirect(url_for('login'))
 
 # =============================================================================
-# DASHBOARD ROUTE
+# PAGE ROUTES
 # =============================================================================
 
 @app.route('/dashboard')
 @require_permission('dashboard', 'view')
 def dashboard():
-    """Dashboard με όλα τα δεδομένα για τα tabs"""
+    """Dashboard home — lightweight summary counts only"""
     academic_year = get_academic_year()
-    
+
+    lab_count = CourseLab.query.count()
+    group_count = db.session.query(LabGroup).filter(LabGroup.year == academic_year).count()
+    professor_count = Professor.query.count()
+
+    return render_template('dashboard_home.html',
+                           active_page='dashboard',
+                           lab_count=lab_count,
+                           group_count=group_count,
+                           professor_count=professor_count)
+
+@app.route('/registration')
+@require_permission('registrations', 'create')
+def registration():
+    """Student registration form — data loaded via API calls from JS"""
+    return render_template('registration.html',
+                           active_page='registration')
+
+@app.route('/my-enrollments')
+@require_permission('registrations', 'view')
+def my_enrollments():
+    """Current student enrollments"""
+    academic_year = get_academic_year()
+    student_am = session.get('schGrAcPersonID')
+    student_enrollments = get_student_enrollments(student_am, academic_year) if student_am else []
+
+    return render_template('my_enrollments.html',
+                           active_page='my_enrollments',
+                           student_enrollments=student_enrollments)
+
+@app.route('/labs')
+@require_permission('dashboard', 'view')
+def labs_page():
+    """Labs listing"""
     labs = CourseLab.query.all()
-    
-    groups_raw = db.session.query(LabGroup, RelLabGroup.lab_id, CourseLab.name.label('lab_name')).join(
+    return render_template('labs.html',
+                           active_page='labs',
+                           labs=labs)
+
+@app.route('/groups-view')
+@require_permission('dashboard', 'view')
+def groups_page():
+    """Groups listing with occupancy"""
+    academic_year = get_academic_year()
+
+    groups_raw = db.session.query(
+        LabGroup, RelLabGroup.lab_id, CourseLab.name.label('lab_name')
+    ).join(
         RelLabGroup, LabGroup.group_id == RelLabGroup.group_id
     ).join(
         CourseLab, RelLabGroup.lab_id == CourseLab.lab_id
     ).filter(LabGroup.year == academic_year).all()
-    
+
     groups = []
     for group, lab_id, lab_name in groups_raw:
         occupancy = get_group_occupancy(group.group_id, lab_id)
@@ -292,11 +346,34 @@ def dashboard():
             'available_spots': occupancy['available'],
             'is_full': occupancy['is_full']
         })
-    
-    students = Student.query.all() if session.get('role') in ['professor', 'admin'] else []
+
+    return render_template('groups.html',
+                           active_page='groups',
+                           groups=groups)
+
+@app.route('/students-view')
+@require_permission('students_list', 'view_professor_students')
+def students_page():
+    """Students listing (professors/admins only)"""
+    students = Student.query.all()
+    return render_template('students.html',
+                           active_page='students',
+                           students=students)
+
+@app.route('/professors-view')
+@require_permission('professors_list', 'view')
+def professors_page():
+    """Professors listing"""
     professors = Professor.query.all()
-    
-    registrations_raw = RelLabStudent.query.all() if session.get('role') in ['professor', 'admin'] else []
+    return render_template('professors.html',
+                           active_page='professors',
+                           professors=professors)
+
+@app.route('/registrations-view')
+@require_permission('registrations', 'manage')
+def registrations_page():
+    """Registrations listing (professors/admins only)"""
+    registrations_raw = RelLabStudent.query.all()
     registrations = []
     for reg in registrations_raw:
         lab = CourseLab.query.get(reg.lab_id)
@@ -306,30 +383,26 @@ def dashboard():
             'lab_name': lab.name if lab else 'Άγνωστο',
             'status': reg.status,
         })
-    
-    absences = StudentMissesPerGroup.query.all() if session.get('role') in ['professor', 'admin'] else []
-    
-    # Εγγραφές και ειδοποιήσεις του τρέχοντος φοιτητή
-    student_enrollments = []
-    notifications = []
-    if session.get('role') == 'student':
-        student_am = session.get('schGrAcPersonID')
-        student_enrollments = get_student_enrollments(student_am, academic_year)
-        notifications = get_student_notifications(student_am)
-    
-    return render_template('dashboard.html', 
-                         name=session.get('name', 'Guest'), 
-                         role=session.get('role', 'guest'),
-                         AUTH_MODE=app.config['AUTH_MODE'],
-                         academic_year=academic_year,
-                         labs=labs,
-                         groups=groups,
-                         students=students,
-                         professors=professors,
-                         registrations=registrations,
-                         absences=absences,
-                         student_enrollments=student_enrollments,
-                         notifications=notifications)
+
+    return render_template('registrations.html',
+                           active_page='registrations',
+                           registrations=registrations)
+
+@app.route('/absences-view')
+@require_permission('absences', 'view_group')
+def absences_page():
+    """Absences listing (professors/admins only)"""
+    absences = StudentMissesPerGroup.query.all()
+    return render_template('absences.html',
+                           active_page='absences',
+                           absences=absences)
+
+@app.route('/my-groups')
+@require_permission('groups', 'view')
+def my_groups_page():
+    """Professor's groups — data loaded via API calls from JS"""
+    return render_template('my_groups.html',
+                           active_page='my_groups')
 
 # =============================================================================
 # PHASE 1: CASCADING DATA APIs

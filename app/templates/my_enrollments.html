@@ -1,0 +1,63 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Οι Εγγραφές μου{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active" aria-current="page">Οι Εγγραφές μου</li>
+{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">
+    <i class="fas fa-clipboard-check me-2"></i>Οι Εγγραφές μου
+</h2>
+
+{% if student_enrollments %}
+<div class="row">
+    {% for enrollment in student_enrollments %}
+    <div class="col-md-6 mb-3">
+        <div class="card enrollment-card {% if enrollment.absences != '-' %}has-absences{% endif %}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <h5 class="card-title mb-1">{{ enrollment.lab_name }}</h5>
+                    <span class="badge status-badge 
+                        {% if enrollment.status == 'Σε Εξέλιξη' %}status-in-progress
+                        {% elif enrollment.status == 'Ολοκληρωμένο' %}status-completed
+                        {% elif enrollment.status == 'Αποτυχία' %}status-failed
+                        {% endif %}">
+                        {{ enrollment.status }}
+                    </span>
+                </div>
+                <p class="text-muted mb-2">
+                    <i class="fas fa-clock me-1"></i>{{ enrollment.group_daytime }}
+                </p>
+                <div class="d-flex justify-content-between">
+                    <span>
+                        <i class="fas fa-calendar-times me-1"></i>
+                        Απουσίες: <strong>{{ enrollment.absences }}</strong>
+                    </span>
+                    {% if enrollment.grade > 0 %}
+                    <span>
+                        <i class="fas fa-star me-1"></i>
+                        Βαθμός: <strong>{{ enrollment.grade }}</strong>
+                    </span>
+                    {% endif %}
+                </div>
+                {% if enrollment.status == 'Σε Εξέλιξη' %}
+                <hr>
+                <a href="{{ url_for('registration') }}" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-exchange-alt me-1"></i>Αλλαγή Τμήματος
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    <i class="fas fa-info-circle me-2"></i>
+    Δεν έχετε εγγραφεί σε κανένα εργαστήριο για το ακαδημαϊκό έτος {{ academic_year }}-{{ academic_year + 1 }}.
+    <a href="{{ url_for('registration') }}" class="alert-link">Εγγραφείτε τώρα!</a>
+</div>
+{% endif %}
+{% endblock %}

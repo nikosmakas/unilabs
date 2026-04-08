@@ -1,0 +1,28 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Υπεύθυνοι Εργαστηρίων{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active" aria-current="page">Υπεύθυνοι</li>
+{% endblock %}
+
+{% block content %}
+<h2><i class="fas fa-user-tie me-2"></i>Υπεύθυνοι Εργαστηρίων</h2>
+<div class="row">
+    {% for prof in professors %}
+    <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">{{ prof.name }}</h5>
+                <h6 class="card-subtitle mb-2 text-muted">{{ prof.status }}</h6>
+                <p class="card-text">
+                    <i class="fas fa-door-open me-1"></i>{{ prof.office }}<br>
+                    <i class="fas fa-envelope me-1"></i><a href="mailto:{{ prof.email }}">{{ prof.email }}</a><br>
+                    <i class="fas fa-phone me-1"></i>{{ prof.tel }}
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,368 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Εγγραφή σε Εργαστήριο{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active" aria-current="page">Εγγραφή σε Εργαστήριο</li>
+{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">
+    <i class="fas fa-plus-circle me-2"></i>Εγγραφή σε Εργαστήριο
+</h2>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card registration-card">
+            <div class="card-header">
+                <i class="fas fa-edit me-2"></i>Φόρμα Εγγραφής
+            </div>
+            <div class="card-body">
+                <div id="registrationAlert"></div>
+                
+                <form id="registrationForm">
+                    <div class="mb-3">
+                        <label for="semesterSelect" class="form-label">
+                            <i class="fas fa-calendar me-1"></i>Εξάμηνο
+                        </label>
+                        <select class="form-select dropdown-cascade" id="semesterSelect" required>
+                            <option value="">-- Επιλέξτε Εξάμηνο --</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="courseSelect" class="form-label">
+                            <i class="fas fa-book me-1"></i>Μάθημα
+                        </label>
+                        <select class="form-select dropdown-cascade" id="courseSelect" disabled required>
+                            <option value="">-- Επιλέξτε Μάθημα --</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="labSelect" class="form-label">
+                            <i class="fas fa-flask me-1"></i>Εργαστήριο
+                        </label>
+                        <select class="form-select dropdown-cascade" id="labSelect" disabled required>
+                            <option value="">-- Επιλέξτε Εργαστήριο --</option>
+                        </select>
+                    </div>
+                    
+                    <div id="labInfo" class="alert alert-info d-none">
+                        <div class="d-flex justify-content-between">
+                            <span><i class="fas fa-info-circle me-1"></i><span id="labName"></span></span>
+                            <span><i class="fas fa-clock me-1"></i>Λήξη εγγραφών: <strong id="regLimit"></strong></span>
+                        </div>
+                    </div>
+                    
+                    <div id="enrollmentStatus" class="alert d-none"></div>
+                    
+                    <div class="mb-3">
+                        <label for="groupSelect" class="form-label">
+                            <i class="fas fa-users me-1"></i>Τμήμα
+                        </label>
+                        <select class="form-select dropdown-cascade" id="groupSelect" disabled required>
+                            <option value="">-- Επιλέξτε Τμήμα --</option>
+                        </select>
+                    </div>
+                    
+                    <div id="groupOccupancy" class="mb-3 d-none">
+                        <label class="form-label">Πληρότητα Τμήματος</label>
+                        <div class="progress occupancy-bar">
+                            <div id="occupancyBar" class="progress-bar" role="progressbar"></div>
+                        </div>
+                        <div class="occupancy-text mt-1">
+                            <span id="occupancyText"></span>
+                        </div>
+                    </div>
+                    
+                    <input type="hidden" id="currentGroupId" value="">
+                    <input type="hidden" id="isChangeMode" value="false">
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" disabled>
+                            <i class="fas fa-check me-1"></i>
+                            <span id="submitBtnText">Εγγραφή</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div id="professorInfo" class="card professor-card d-none">
+            <div class="card-header">
+                <i class="fas fa-user-tie me-2"></i>Υπεύθυνος Τμήματος
+            </div>
+            <div class="card-body">
+                <div id="professorDetails"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let selectedLabId = null;
+    let selectedGroupId = null;
+    let registrationOpen = false;
+
+    document.addEventListener('DOMContentLoaded', async function() {
+        await loadSemesters();
+    });
+
+    async function loadSemesters() {
+        try {
+            const response = await fetch('/api/semesters');
+            const data = await response.json();
+            if (data.success) {
+                const select = document.getElementById('semesterSelect');
+                select.innerHTML = '<option value="">-- Επιλέξτε Εξάμηνο --</option>';
+                data.data.forEach(semester => {
+                    const option = document.createElement('option');
+                    option.value = semester.id;
+                    option.textContent = semester.name + 'ο Εξάμηνο';
+                    select.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Error loading semesters:', error);
+        }
+    }
+
+    document.getElementById('semesterSelect').addEventListener('change', async function() {
+        const semester = this.value;
+        resetSelect('courseSelect', '-- Επιλέξτε Μάθημα --');
+        resetSelect('labSelect', '-- Επιλέξτε Εργαστήριο --');
+        resetSelect('groupSelect', '-- Επιλέξτε Τμήμα --');
+        document.getElementById('labInfo').classList.add('d-none');
+        document.getElementById('enrollmentStatus').classList.add('d-none');
+        document.getElementById('groupOccupancy').classList.add('d-none');
+        document.getElementById('professorInfo').classList.add('d-none');
+        document.getElementById('submitBtn').disabled = true;
+        if (!semester) return;
+        try {
+            const response = await fetch(`/api/courses/${semester}`);
+            const data = await response.json();
+            if (data.success) {
+                const select = document.getElementById('courseSelect');
+                select.innerHTML = '<option value="">-- Επιλέξτε Μάθημα --</option>';
+                data.data.forEach(course => {
+                    const option = document.createElement('option');
+                    option.value = course.course_id;
+                    option.textContent = course.name;
+                    select.appendChild(option);
+                });
+                select.disabled = false;
+            }
+        } catch (error) { console.error('Error loading courses:', error); }
+    });
+
+    document.getElementById('courseSelect').addEventListener('change', async function() {
+        const courseId = this.value;
+        resetSelect('labSelect', '-- Επιλέξτε Εργαστήριο --');
+        resetSelect('groupSelect', '-- Επιλέξτε Τμήμα --');
+        document.getElementById('labInfo').classList.add('d-none');
+        document.getElementById('enrollmentStatus').classList.add('d-none');
+        document.getElementById('groupOccupancy').classList.add('d-none');
+        document.getElementById('professorInfo').classList.add('d-none');
+        document.getElementById('submitBtn').disabled = true;
+        if (!courseId) return;
+        try {
+            const response = await fetch(`/api/labs/${courseId}`);
+            const data = await response.json();
+            if (data.success) {
+                const select = document.getElementById('labSelect');
+                select.innerHTML = '<option value="">-- Επιλέξτε Εργαστήριο --</option>';
+                data.data.forEach(lab => {
+                    const option = document.createElement('option');
+                    option.value = lab.lab_id;
+                    option.textContent = lab.name;
+                    select.appendChild(option);
+                });
+                select.disabled = false;
+            }
+        } catch (error) { console.error('Error loading labs:', error); }
+    });
+
+    document.getElementById('labSelect').addEventListener('change', async function() {
+        const labId = this.value;
+        selectedLabId = labId;
+        resetSelect('groupSelect', '-- Επιλέξτε Τμήμα --');
+        document.getElementById('groupOccupancy').classList.add('d-none');
+        document.getElementById('professorInfo').classList.add('d-none');
+        document.getElementById('submitBtn').disabled = true;
+        document.getElementById('currentGroupId').value = '';
+        document.getElementById('isChangeMode').value = 'false';
+        if (!labId) {
+            document.getElementById('labInfo').classList.add('d-none');
+            document.getElementById('enrollmentStatus').classList.add('d-none');
+            return;
+        }
+        try {
+            const groupsResponse = await fetch(`/api/groups/${labId}`);
+            const groupsData = await groupsResponse.json();
+            const statusResponse = await fetch(`/api/student/enrollment-status/${labId}`);
+            const statusData = await statusResponse.json();
+
+            document.getElementById('labName').textContent = groupsData.lab_name || '';
+            document.getElementById('regLimit').textContent = groupsData.reg_limit || 'Δεν έχει οριστεί';
+            document.getElementById('labInfo').classList.remove('d-none');
+            registrationOpen = groupsData.registration_open;
+
+            const enrollmentStatus = document.getElementById('enrollmentStatus');
+            if (statusData.success) {
+                if (statusData.current_group) {
+                    enrollmentStatus.className = 'alert alert-warning';
+                    enrollmentStatus.innerHTML = `<i class="fas fa-info-circle me-2"></i>Είστε ήδη εγγεγραμμένος στο τμήμα: <strong>${statusData.current_group.daytime}</strong>${statusData.can_change_group ? '<br><small>Μπορείτε να αλλάξετε τμήμα επιλέγοντας νέο παρακάτω.</small>' : ''}`;
+                    enrollmentStatus.classList.remove('d-none');
+                    document.getElementById('currentGroupId').value = statusData.current_group.group_id;
+                    document.getElementById('isChangeMode').value = 'true';
+                    document.getElementById('submitBtnText').textContent = 'Αλλαγή Τμήματος';
+                } else if (statusData.lab_status && statusData.lab_status.status === 'Αποτυχία') {
+                    enrollmentStatus.className = 'alert alert-info';
+                    enrollmentStatus.innerHTML = `<i class="fas fa-redo me-2"></i>Επανεγγραφή μετά από αποτυχία. Επιλέξτε τμήμα για να εγγραφείτε ξανά.`;
+                    enrollmentStatus.classList.remove('d-none');
+                    document.getElementById('submitBtnText').textContent = 'Επανεγγραφή';
+                } else {
+                    enrollmentStatus.classList.add('d-none');
+                    document.getElementById('submitBtnText').textContent = 'Εγγραφή';
+                }
+                if (!groupsData.registration_open) {
+                    enrollmentStatus.className = 'alert alert-danger';
+                    enrollmentStatus.innerHTML = `<i class="fas fa-lock me-2"></i>${groupsData.registration_message}`;
+                    enrollmentStatus.classList.remove('d-none');
+                }
+            }
+
+            if (groupsData.success) {
+                const select = document.getElementById('groupSelect');
+                select.innerHTML = '<option value="">-- Επιλέξτε Τμήμα --</option>';
+                groupsData.data.forEach(group => {
+                    const option = document.createElement('option');
+                    option.value = group.group_id;
+                    const occupancy = group.occupancy;
+                    const isCurrentGroup = statusData.current_group && statusData.current_group.group_id == group.group_id;
+                    option.textContent = `${group.daytime} (${occupancy.current}/${occupancy.max})`;
+                    if (isCurrentGroup && statusData.can_change_group) {
+                        option.disabled = true;
+                        option.textContent += ' - ΤΡΕΧΟΝ ΤΜΗΜΑ';
+                        option.style.fontWeight = 'bold';
+                    } else if (occupancy.is_full) {
+                        option.disabled = true;
+                        option.textContent += ' - ΠΛΗΡΕΣ';
+                    }
+                    select.appendChild(option);
+                });
+                select.disabled = !registrationOpen;
+            }
+        } catch (error) { console.error('Error loading groups:', error); }
+    });
+
+    document.getElementById('groupSelect').addEventListener('change', async function() {
+        const groupId = this.value;
+        selectedGroupId = groupId;
+        const currentGroupId = document.getElementById('currentGroupId').value;
+        const isChangeMode = document.getElementById('isChangeMode').value === 'true';
+        if (!groupId) {
+            document.getElementById('groupOccupancy').classList.add('d-none');
+            document.getElementById('professorInfo').classList.add('d-none');
+            document.getElementById('submitBtn').disabled = true;
+            return;
+        }
+        if (isChangeMode && groupId == currentGroupId) {
+            document.getElementById('submitBtn').disabled = true;
+            showAlert('registrationAlert', 'warning', 'Δεν μπορείτε να επιλέξετε το τμήμα στο οποίο είστε ήδη εγγεγραμμένος.');
+            return;
+        }
+        try {
+            const response = await fetch(`/api/groups/${selectedLabId}`);
+            const data = await response.json();
+            if (data.success) {
+                const group = data.data.find(g => g.group_id == groupId);
+                if (group) {
+                    const occupancy = group.occupancy;
+                    const bar = document.getElementById('occupancyBar');
+                    bar.style.width = occupancy.percentage + '%';
+                    bar.className = 'progress-bar ' + (occupancy.percentage >= 90 ? 'bg-danger' : occupancy.percentage >= 70 ? 'bg-warning' : 'bg-success');
+                    document.getElementById('occupancyText').textContent = `${occupancy.current}/${occupancy.max} θέσεις (${occupancy.available} διαθέσιμες)`;
+                    document.getElementById('groupOccupancy').classList.remove('d-none');
+                    document.getElementById('submitBtn').disabled = occupancy.is_full;
+                    if (occupancy.is_full) showAlert('registrationAlert', 'danger', 'Το τμήμα είναι πλήρες.');
+                }
+            }
+            const profResponse = await fetch(`/api/groups/${groupId}/professor`);
+            const profData = await profResponse.json();
+            if (profData.success && profData.data.length > 0) {
+                let html = '';
+                profData.data.forEach(prof => {
+                    html += `<h6>${prof.name}</h6><p class="text-muted mb-2">${prof.status}</p><p class="mb-1"><i class="fas fa-door-open me-2"></i>${prof.office}</p><p class="mb-1"><i class="fas fa-phone me-2"></i>${prof.tel}</p><p class="mb-0"><i class="fas fa-envelope me-2"></i><a href="mailto:${prof.email}">${prof.email}</a></p>`;
+                });
+                document.getElementById('professorDetails').innerHTML = html;
+                document.getElementById('professorInfo').classList.remove('d-none');
+            } else {
+                document.getElementById('professorInfo').classList.add('d-none');
+            }
+        } catch (error) { console.error('Error:', error); }
+    });
+
+    document.getElementById('registrationForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const labId = document.getElementById('labSelect').value;
+        const groupId = document.getElementById('groupSelect').value;
+        const isChangeMode = document.getElementById('isChangeMode').value === 'true';
+        const currentGroupId = document.getElementById('currentGroupId').value;
+        if (!labId || !groupId) {
+            showAlert('registrationAlert', 'danger', 'Παρακαλώ επιλέξτε εργαστήριο και τμήμα.');
+            return;
+        }
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Παρακαλώ περιμένετε...';
+        try {
+            let response;
+            if (isChangeMode) {
+                response = await fetch('/api/change-group', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lab_id: parseInt(labId), old_group_id: parseInt(currentGroupId), new_group_id: parseInt(groupId) })
+                });
+            } else {
+                response = await fetch('/api/register-lab', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lab_id: parseInt(labId), group_id: parseInt(groupId) })
+                });
+            }
+            const data = await response.json();
+            if (data.success) {
+                showAlert('registrationAlert', 'success',
+                    `${data.message}<br><small class="mt-2 d-block"><a href="{{ url_for('my_enrollments') }}" class="alert-link"><i class="fas fa-eye me-1"></i>Δείτε τις εγγραφές σας</a></small>`, false);
+                document.getElementById('semesterSelect').value = '';
+                resetSelect('courseSelect', '-- Επιλέξτε Μάθημα --');
+                resetSelect('labSelect', '-- Επιλέξτε Εργαστήριο --');
+                resetSelect('groupSelect', '-- Επιλέξτε Τμήμα --');
+                document.getElementById('labInfo').classList.add('d-none');
+                document.getElementById('enrollmentStatus').classList.add('d-none');
+                document.getElementById('groupOccupancy').classList.add('d-none');
+                document.getElementById('professorInfo').classList.add('d-none');
+                document.getElementById('submitBtnText').textContent = 'Εγγραφή';
+                document.getElementById('isChangeMode').value = 'false';
+                document.getElementById('currentGroupId').value = '';
+                submitBtn.innerHTML = '<i class="fas fa-check me-1"></i><span id="submitBtnText">Εγγραφή</span>';
+            } else {
+                showAlert('registrationAlert', 'danger', data.message);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<i class="fas fa-check me-1"></i><span id="submitBtnText">${isChangeMode ? 'Αλλαγή Τμήματος' : 'Εγγραφή'}</span>`;
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showAlert('registrationAlert', 'danger', 'Σφάλμα στην επικοινωνία. Προσπαθήστε αργότερα.');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<i class="fas fa-check me-1"></i><span id="submitBtnText">${isChangeMode ? 'Αλλαγή Τμήματος' : 'Εγγραφή'}</span>`;
+        }
+    });
+</script>
+{% endblock %}
