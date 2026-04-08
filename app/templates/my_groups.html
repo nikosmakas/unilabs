@@ -27,7 +27,10 @@
                 <h5 class="modal-title">
                     <i class="fas fa-users me-2"></i>Φοιτητές Τμήματος
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <a id="exportCsvBtn" class="btn btn-sm btn-outline-light ms-3" href="#" download>
+                    <i class="fas fa-file-csv me-1"></i>Εξαγωγή CSV
+                </a>
+                <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div id="groupStudentsLoading" class="text-center py-4">
@@ -261,6 +264,7 @@
 
     async function loadGroupStudents(groupId, groupName) {
         currentModalGroupId = groupId;
+        document.getElementById('exportCsvBtn').href = `/api/professor/group/${groupId}/export`;
         const modal = new bootstrap.Modal(document.getElementById('groupStudentsModal'));
         const loading = document.getElementById('groupStudentsLoading');
         const content = document.getElementById('groupStudentsContent');

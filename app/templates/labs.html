@@ -17,6 +17,9 @@
                 <th>Περιγραφή</th>
                 <th>Μέγ. Φοιτητές</th>
                 <th>Όριο Εγγραφών</th>
+                {% if role == 'admin' %}
+                <th>Ενέργειες</th>
+                {% endif %}
             </tr>
         </thead>
         <tbody>
@@ -27,6 +30,13 @@
                 <td>{{ lab.description }}</td>
                 <td><span class="badge bg-info">{{ lab.maxusers }}</span></td>
                 <td>{{ lab.reg_limit }}</td>
+                {% if role == 'admin' %}
+                <td>
+                    <a href="/api/admin/lab/{{ lab.lab_id }}/export" class="btn btn-sm btn-outline-primary" download title="Εξαγωγή CSV">
+                        <i class="fas fa-file-csv"></i>
+                    </a>
+                </td>
+                {% endif %}
             </tr>
         {% endfor %}
         </tbody>

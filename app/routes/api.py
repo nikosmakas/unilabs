@@ -1,5 +1,7 @@
-from flask import Blueprint, request, session, jsonify
+from flask import Blueprint, request, session, jsonify, Response
 from datetime import datetime
+import csv
+import io
 
 from models import (
     Student, Professor, db, LabGroup, CourseLab, RelGroupStudent,
@@ -752,6 +754,140 @@ def api_edit_professor_profile():
         'data': {'prof_id': professor.prof_id, 'name': professor.name,
                  'office': professor.office, 'tel': professor.tel}
     })
+
+
+# =============================================================================
+# CSV EXPORT APIs
+# =============================================================================
+
+def _make_csv_response(rows, headers, filename):
+    """Build a UTF-8 BOM CSV Response from a list of row-dicts."""
+    buf = io.StringIO()
+    buf.write('\ufeff')  # BOM for Excel
+    writer = csv.DictWriter(buf, fieldnames=headers)
+    writer.writeheader()
+    for row in rows:
+        writer.writerow(row)
+    output = buf.getvalue()
+    return Response(
+        output,
+        mimetype='text/csv; charset=utf-8',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+    )
+
+
+@api_bp.route('/api/professor/group/<int:group_id>/export')
+@require_permission('students_list', 'view_professor_students')
+def api_export_group_csv(group_id):
+    """Export group roster as CSV (professor who owns the group, or admin)."""
+    err = _check_group_ownership(group_id)
+    if err:
+        return err
+
+    lab_rel = RelLabGroup.query.filter_by(group_id=group_id).first()
+    lab_id = lab_rel.lab_id if lab_rel else None
+
+    students = db.session.query(Student).join(
+        RelGroupStudent, Student.am == RelGroupStudent.am
+    ).filter(RelGroupStudent.group_id == group_id).order_by(Student.name).all()
+
+    rows = []
+    for s in students:
+        absence_rec = StudentMissesPerGroup.query.filter_by(
+            am=s.am, group_id=group_id
+        ).first()
+        dates_str = absence_rec.misses if absence_rec else ''
+        dates_list = [d.strip() for d in dates_str.split(',') if d.strip()] if dates_str else []
+
+        grade = 0
+        status = STATUS_IN_PROGRESS
+        if lab_id:
+            enroll = RelLabStudent.query.filter_by(am=s.am, lab_id=lab_id).first()
+            if enroll:
+                grade = enroll.grade
+                status = enroll.status
+
+        rows.append({
+            '\u0391.\u039c.': s.am,
+            '\u039f\u03bd\u03bf\u03bc\u03b1\u03c4\u03b5\u03c0\u03ce\u03bd\u03c5\u03bc\u03bf': s.name,
+            'Email': s.email,
+            '\u0395\u03be\u03ac\u03bc\u03b7\u03bd\u03bf': s.semester,
+            '\u0392\u03b1\u03b8\u03bc\u03cc\u03c2': grade,
+            '\u039a\u03b1\u03c4\u03ac\u03c3\u03c4\u03b1\u03c3\u03b7': status,
+            '\u03a3\u03cd\u03bd\u03bf\u03bb\u03bf \u0391\u03c0\u03bf\u03c5\u03c3\u03b9\u03ce\u03bd': len(dates_list),
+            '\u0397\u03bc\u03b5\u03c1\u03bf\u03bc\u03b7\u03bd\u03af\u03b5\u03c2 \u0391\u03c0\u03bf\u03c5\u03c3\u03b9\u03ce\u03bd': ', '.join(dates_list)
+        })
+
+    headers = [
+        '\u0391.\u039c.', '\u039f\u03bd\u03bf\u03bc\u03b1\u03c4\u03b5\u03c0\u03ce\u03bd\u03c5\u03bc\u03bf',
+        'Email', '\u0395\u03be\u03ac\u03bc\u03b7\u03bd\u03bf',
+        '\u0392\u03b1\u03b8\u03bc\u03cc\u03c2', '\u039a\u03b1\u03c4\u03ac\u03c3\u03c4\u03b1\u03c3\u03b7',
+        '\u03a3\u03cd\u03bd\u03bf\u03bb\u03bf \u0391\u03c0\u03bf\u03c5\u03c3\u03b9\u03ce\u03bd',
+        '\u0397\u03bc\u03b5\u03c1\u03bf\u03bc\u03b7\u03bd\u03af\u03b5\u03c2 \u0391\u03c0\u03bf\u03c5\u03c3\u03b9\u03ce\u03bd'
+    ]
+
+    audit_log('csv_export', new_value=f'Group {group_id} roster exported ({len(rows)} students)')
+    return _make_csv_response(rows, headers, f'group_roster_{group_id}.csv')
+
+
+@api_bp.route('/api/admin/lab/<int:lab_id>/export')
+@require_permission('registrations', 'manage')
+def api_export_lab_csv(lab_id):
+    """Export full lab roster across all groups as CSV (admin only)."""
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Admin only'}), 403
+
+    lab = CourseLab.query.get(lab_id)
+    if not lab:
+        return jsonify({'success': False, 'message': 'Lab not found'}), 404
+
+    academic_year = get_academic_year()
+
+    # All groups belonging to this lab in the current year
+    groups = db.session.query(LabGroup).join(
+        RelLabGroup, LabGroup.group_id == RelLabGroup.group_id
+    ).filter(
+        RelLabGroup.lab_id == lab_id,
+        LabGroup.year == academic_year
+    ).all()
+    group_map = {g.group_id: g.daytime for g in groups}
+    group_ids = list(group_map.keys())
+
+    if not group_ids:
+        return jsonify({'success': False, 'message': 'No groups for this lab in current year'}), 404
+
+    # Students enrolled in any of these groups
+    enrolled = db.session.query(Student, RelGroupStudent.group_id).join(
+        RelGroupStudent, Student.am == RelGroupStudent.am
+    ).filter(RelGroupStudent.group_id.in_(group_ids)).order_by(Student.name).all()
+
+    rows = []
+    for student, gid in enrolled:
+        enroll = RelLabStudent.query.filter_by(am=student.am, lab_id=lab_id).first()
+        grade = enroll.grade if enroll else 0
+        status = enroll.status if enroll else STATUS_IN_PROGRESS
+
+        absence_rec = StudentMissesPerGroup.query.filter_by(am=student.am, group_id=gid).first()
+        abs_count = len([d.strip() for d in absence_rec.misses.split(',') if d.strip()]) if absence_rec else 0
+
+        rows.append({
+            '\u0391.\u039c.': student.am,
+            '\u039f\u03bd\u03bf\u03bc\u03b1\u03c4\u03b5\u03c0\u03ce\u03bd\u03c5\u03bc\u03bf': student.name,
+            '\u03a4\u03bc\u03ae\u03bc\u03b1': group_map.get(gid, ''),
+            '\u0392\u03b1\u03b8\u03bc\u03cc\u03c2': grade,
+            '\u039a\u03b1\u03c4\u03ac\u03c3\u03c4\u03b1\u03c3\u03b7': status,
+            '\u03a3\u03cd\u03bd\u03bf\u03bb\u03bf \u0391\u03c0\u03bf\u03c5\u03c3\u03b9\u03ce\u03bd': abs_count
+        })
+
+    headers = [
+        '\u0391.\u039c.', '\u039f\u03bd\u03bf\u03bc\u03b1\u03c4\u03b5\u03c0\u03ce\u03bd\u03c5\u03bc\u03bf',
+        '\u03a4\u03bc\u03ae\u03bc\u03b1',
+        '\u0392\u03b1\u03b8\u03bc\u03cc\u03c2', '\u039a\u03b1\u03c4\u03ac\u03c3\u03c4\u03b1\u03c3\u03b7',
+        '\u03a3\u03cd\u03bd\u03bf\u03bb\u03bf \u0391\u03c0\u03bf\u03c5\u03c3\u03b9\u03ce\u03bd'
+    ]
+
+    audit_log('csv_export', new_value=f'Lab {lab_id} full roster exported ({len(rows)} students)')
+    return _make_csv_response(rows, headers, f'lab_{lab_id}_full_roster.csv')
 
 
 # =============================================================================
