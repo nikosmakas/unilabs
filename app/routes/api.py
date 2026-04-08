@@ -314,6 +314,66 @@ def api_professor_group_students(group_id):
 
 
 # =============================================================================
+# UNENROLLMENT API
+# =============================================================================
+
+@api_bp.route('/api/student/enrollment/<int:lab_id>', methods=['DELETE'])
+@require_permission('registrations', 'cancel')
+def api_unenroll_lab(lab_id):
+    """Completely remove a student's enrollment from a lab and its group."""
+    student_am = session.get('schGrAcPersonID')
+    if not student_am:
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+
+    lab_enrollment = RelLabStudent.query.filter_by(am=student_am, lab_id=lab_id).first()
+    if not lab_enrollment:
+        return jsonify({'success': False, 'message': 'No enrollment found for this lab'}), 404
+
+    if lab_enrollment.status != '\u03a3\u03b5 \u0395\u03be\u03ad\u03bb\u03b9\u03be\u03b7':
+        return jsonify({'success': False, 'message': 'Only active enrollments can be cancelled'}), 400
+
+    academic_year = get_academic_year()
+
+    try:
+        group_enrollment = db.session.query(RelGroupStudent).join(
+            LabGroup, RelGroupStudent.group_id == LabGroup.group_id
+        ).join(
+            RelLabGroup, LabGroup.group_id == RelLabGroup.group_id
+        ).filter(
+            RelGroupStudent.am == student_am,
+            RelLabGroup.lab_id == lab_id,
+            LabGroup.year == academic_year
+        ).first()
+
+        if group_enrollment:
+            audit_log('group_enrollment_deleted',
+                      old_value=f"Student {student_am} in group {group_enrollment.group_id}",
+                      reason='Student unenrolled from lab')
+            db.session.delete(group_enrollment)
+
+        absence = StudentMissesPerGroup.query.filter_by(
+            am=student_am,
+            group_id=group_enrollment.group_id if group_enrollment else 0
+        ).first()
+        if absence:
+            db.session.delete(absence)
+
+        audit_log('lab_enrollment_deleted',
+                  old_value=f"Student {student_am} in lab {lab_id}, status={lab_enrollment.status}",
+                  reason='Student unenrolled from lab')
+        db.session.delete(lab_enrollment)
+
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Η απεγγραφή ολοκληρώθηκε επιτυχώς.'}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        import logging
+        logging.getLogger(__name__).error(f'Unenroll failed: {e}')
+        return jsonify({'success': False, 'message': 'Σφάλμα κατά την απεγγραφή'}), 500
+
+
+# =============================================================================
 # STUDENT PROFILE & NOTIFICATIONS APIs
 # =============================================================================
 

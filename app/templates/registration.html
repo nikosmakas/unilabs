@@ -308,12 +308,19 @@
         } catch (error) { console.error('Error:', error); }
     });
 
+    function setSubmitBtn(label, disabled) {
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = disabled;
+        btn.innerHTML = `<i class="fas fa-check me-1"></i><span id="submitBtnText">${label}</span>`;
+    }
+
     document.getElementById('registrationForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const labId = document.getElementById('labSelect').value;
         const groupId = document.getElementById('groupSelect').value;
         const isChangeMode = document.getElementById('isChangeMode').value === 'true';
         const currentGroupId = document.getElementById('currentGroupId').value;
+        const btnLabel = isChangeMode ? 'Αλλαγή Τμήματος' : 'Εγγραφή';
         if (!labId || !groupId) {
             showAlert('registrationAlert', 'danger', 'Παρακαλώ επιλέξτε εργαστήριο και τμήμα.');
             return;
@@ -336,7 +343,15 @@
                     body: JSON.stringify({ lab_id: parseInt(labId), group_id: parseInt(groupId) })
                 });
             }
-            const data = await response.json();
+            let data;
+            try {
+                data = await response.json();
+            } catch (parseErr) {
+                console.error('JSON parse error:', parseErr);
+                showAlert('registrationAlert', 'danger', 'Σφάλμα στην επικοινωνία. Προσπαθήστε αργότερα.');
+                setSubmitBtn(btnLabel, false);
+                return;
+            }
             if (data.success) {
                 showAlert('registrationAlert', 'success',
                     `${data.message}<br><small class="mt-2 d-block"><a href="{{ url_for('views_bp.my_enrollments') }}" class="alert-link"><i class="fas fa-eye me-1"></i>Δείτε τις εγγραφές σας</a></small>`, false);
@@ -348,20 +363,17 @@
                 document.getElementById('enrollmentStatus').classList.add('d-none');
                 document.getElementById('groupOccupancy').classList.add('d-none');
                 document.getElementById('professorInfo').classList.add('d-none');
-                document.getElementById('submitBtnText').textContent = 'Εγγραφή';
                 document.getElementById('isChangeMode').value = 'false';
                 document.getElementById('currentGroupId').value = '';
-                submitBtn.innerHTML = '<i class="fas fa-check me-1"></i><span id="submitBtnText">Εγγραφή</span>';
+                setSubmitBtn('Εγγραφή', true);
             } else {
                 showAlert('registrationAlert', 'danger', data.message);
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = `<i class="fas fa-check me-1"></i><span id="submitBtnText">${isChangeMode ? 'Αλλαγή Τμήματος' : 'Εγγραφή'}</span>`;
+                setSubmitBtn(btnLabel, false);
             }
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Registration fetch error:', error);
             showAlert('registrationAlert', 'danger', 'Σφάλμα στην επικοινωνία. Προσπαθήστε αργότερα.');
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = `<i class="fas fa-check me-1"></i><span id="submitBtnText">${isChangeMode ? 'Αλλαγή Τμήματος' : 'Εγγραφή'}</span>`;
+            setSubmitBtn(btnLabel, false);
         }
     });
 </script>

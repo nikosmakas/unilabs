@@ -193,20 +193,23 @@
         
         window.addEventListener('load', setSidebarTop);
         window.addEventListener('resize', setSidebarTop);
+
+        function applyTheme(isDark) {
+            body.classList.toggle('bg-dark', isDark);
+            body.classList.toggle('text-light', isDark);
+            topFixedButtons.classList.toggle('bg-dark', isDark);
+            topFixedButtons.classList.toggle('bg-light', !isDark);
+            const icon = themeToggle.querySelector('i');
+            icon.classList.toggle('fa-sun', isDark);
+            icon.classList.toggle('fa-moon', !isDark);
+        }
+
+        applyTheme(localStorage.getItem('theme') === 'dark');
         
         themeToggle.addEventListener('click', function() {
-            body.classList.toggle('bg-dark');
-            body.classList.toggle('text-light');
-            topFixedButtons.classList.toggle('bg-dark');
-            topFixedButtons.classList.toggle('bg-light');
-            const icon = themeToggle.querySelector('i');
-            if (body.classList.contains('bg-dark')) {
-                icon.classList.remove('fa-moon');
-                icon.classList.add('fa-sun');
-            } else {
-                icon.classList.remove('fa-sun');
-                icon.classList.add('fa-moon');
-            }
+            const isDark = !body.classList.contains('bg-dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            applyTheme(isDark);
         });
     </script>
     {% block scripts %}{% endblock %}

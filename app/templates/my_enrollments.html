@@ -11,14 +11,20 @@
     <i class="fas fa-clipboard-check me-2"></i>Οι Εγγραφές μου
 </h2>
 
+<div id="enrollmentAlert"></div>
+
 {% if student_enrollments %}
 <div class="row">
     {% for enrollment in student_enrollments %}
-    <div class="col-md-6 mb-3">
+    <div class="col-md-6 mb-3" id="enrollment-card-{{ enrollment.lab_id }}">
         <div class="card enrollment-card {% if enrollment.absences != '-' %}has-absences{% endif %}">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-start">
-                    <h5 class="card-title mb-1">{{ enrollment.lab_name }}</h5>
+                    <div>
+                        <h5 class="card-title mb-1">{{ enrollment.lab_name }}</h5>
+                        <span class="badge bg-secondary me-1">{{ enrollment.semester }}ο Εξάμηνο</span>
+                        <small class="text-muted">{{ enrollment.course_name }}</small>
+                    </div>
                     <span class="badge status-badge 
                         {% if enrollment.status == 'Σε Εξέλιξη' %}status-in-progress
                         {% elif enrollment.status == 'Ολοκληρωμένο' %}status-completed
@@ -27,7 +33,7 @@
                         {{ enrollment.status }}
                     </span>
                 </div>
-                <p class="text-muted mb-2">
+                <p class="text-muted mb-2 mt-2">
                     <i class="fas fa-clock me-1"></i>{{ enrollment.group_daytime }}
                 </p>
                 <div class="d-flex justify-content-between">
@@ -44,9 +50,16 @@
                 </div>
                 {% if enrollment.status == 'Σε Εξέλιξη' %}
                 <hr>
-                <a href="{{ url_for('views_bp.registration') }}" class="btn btn-sm btn-outline-primary">
-                    <i class="fas fa-exchange-alt me-1"></i>Αλλαγή Τμήματος
-                </a>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('views_bp.registration') }}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-exchange-alt me-1"></i>Αλλαγή Τμήματος
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-danger unenroll-btn"
+                            data-lab-id="{{ enrollment.lab_id }}"
+                            data-lab-name="{{ enrollment.lab_name }}">
+                        <i class="fas fa-times-circle me-1"></i>Απεγγραφή
+                    </button>
+                </div>
                 {% endif %}
             </div>
         </div>
@@ -60,4 +73,42 @@
     <a href="{{ url_for('views_bp.registration') }}" class="alert-link">Εγγραφείτε τώρα!</a>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.querySelectorAll('.unenroll-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const labId = this.dataset.labId;
+            const labName = this.dataset.labName;
+            if (!confirm(`Είστε σίγουροι ότι θέλετε να απεγγραφείτε από το "${labName}";\nΗ ενέργεια αυτή δεν μπορεί να αναιρεθεί.`)) {
+                return;
+            }
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Αφαίρεση...';
+            try {
+                const response = await fetch(`/api/student/enrollment/${labId}`, { method: 'DELETE' });
+                const data = await response.json();
+                if (data.success) {
+                    const card = document.getElementById(`enrollment-card-${labId}`);
+                    if (card) {
+                        card.style.transition = 'opacity 0.4s';
+                        card.style.opacity = '0';
+                        setTimeout(() => card.remove(), 400);
+                    }
+                    showAlert('enrollmentAlert', 'success', data.message);
+                } else {
+                    showAlert('enrollmentAlert', 'danger', data.message);
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-times-circle me-1"></i>Απεγγραφή';
+                }
+            } catch (error) {
+                console.error('Unenroll error:', error);
+                showAlert('enrollmentAlert', 'danger', 'Σφάλμα στην επικοινωνία.');
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-times-circle me-1"></i>Απεγγραφή';
+            }
+        });
+    });
+</script>
 {% endblock %}
