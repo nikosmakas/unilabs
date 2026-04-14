@@ -1,4 +1,4 @@
-/**
+ο»Ώ/**
  * Lightweight vanilla JS table sorting for tables with class "sortable".
  * Click a <th> to sort ascending; click again to sort descending.
  * Supports numeric and string comparison.
@@ -38,7 +38,7 @@
             var headers = table.querySelectorAll('thead th');
             headers.forEach(function (th, index) {
                 th.style.cursor = 'pointer';
-                th.setAttribute('title', 'Κλικ για ταξινόμηση');
+                th.setAttribute('title', 'ΞΞ»ΞΉΞΊ Ξ³ΞΉΞ± Ο„Ξ±ΞΎΞΉΞ½ΟΞΌΞ·ΟƒΞ·');
 
                 th.addEventListener('click', function () {
                     var currentAsc = th.getAttribute('data-sort-asc') === 'true';
@@ -57,7 +57,7 @@
                     // Add sort indicator
                     var span = document.createElement('span');
                     span.className = 'sort-indicator ms-1';
-                    span.textContent = ascending ? ' ?' : ' ?';
+                    span.textContent = ascending ? ' β–²' : ' β–Ό';
                     th.appendChild(span);
 
                     sortTable(table, index, ascending);

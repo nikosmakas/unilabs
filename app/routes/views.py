@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, session
+ο»Ώfrom flask import Blueprint, render_template, session
 
 from models import (
     Student, Professor, db, LabGroup, CourseLab,
@@ -125,7 +125,7 @@ def registrations_page():
         student = Student.query.get(reg.am)
         registrations.append({
             'am': reg.am,
-            'student_name': student.name if student else '’γνωστος',
+            'student_name': student.name if student else 'Unknown',
             'lab_id': reg.lab_id,
             'lab_name': lab.name if lab else 'Unknown',
             'status': reg.status,
@@ -146,7 +146,7 @@ def absences_page():
         student = Student.query.get(miss.am)
         absences.append({
             'am': miss.am,
-            'student_name': student.name if student else '’γνωστος',
+            'student_name': student.name if student else 'Unknown',
             'group_id': miss.group_id,
             'misses': miss.misses,
         })
