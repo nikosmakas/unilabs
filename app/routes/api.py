@@ -703,6 +703,384 @@ def api_student_notifications():
 # PROFESSOR / ADMIN MANAGEMENT APIs
 # =============================================================================
 
+@api_bp.route('/api/labs/<int:lab_id>/details')
+@require_permission('dashboard', 'view')
+def api_lab_details(lab_id):
+    """Return lab details including course name and assigned professors."""
+    lab = CourseLab.query.get(lab_id)
+    if not lab:
+        return jsonify({'success': False, 'message': 'Lab not found'}), 404
+
+    # Course info
+    course_rel = RelCourseLab.query.filter_by(lab_id=lab_id).first()
+    course = Coursename.query.get(course_rel.course_id) if course_rel else None
+
+    # Professors assigned to any group of this lab
+    professors = db.session.query(Professor).join(
+        RelGroupProf, Professor.prof_id == RelGroupProf.prof_id
+    ).join(
+        RelLabGroup, RelGroupProf.group_id == RelLabGroup.group_id
+    ).filter(
+        RelLabGroup.lab_id == lab_id
+    ).distinct().all()
+
+    # Convert reg_limit to ISO format for HTML5 date inputs
+    reg_limit_iso = ''
+    if lab.reg_limit:
+        for fmt in ('%d/%m/%Y', '%Y-%m-%d'):
+            try:
+                reg_limit_iso = datetime.strptime(lab.reg_limit, fmt).strftime('%Y-%m-%d')
+                break
+            except ValueError:
+                continue
+
+    return jsonify({
+        'success': True,
+        'data': {
+            'lab_id': lab.lab_id,
+            'name': lab.name,
+            'description': lab.description,
+            'maxusers': lab.maxusers,
+            'reg_limit': lab.reg_limit,
+            'reg_limit_iso': reg_limit_iso,
+            'max_misses': lab.max_misses,
+            'course_id': course_rel.course_id if course_rel else None,
+            'course_name': course.name if course else None,
+            'professors': [{
+                'prof_id': p.prof_id,
+                'name': p.name,
+                'email': p.email
+            } for p in professors]
+        }
+    })
+
+
+@api_bp.route('/api/admin/labs/<int:lab_id>', methods=['PUT'])
+@require_permission('registrations', 'manage')
+def api_admin_edit_lab(lab_id):
+    """Admin-only: update lab properties and course assignment."""
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Admin only'}), 403
+
+    lab = CourseLab.query.get(lab_id)
+    if not lab:
+        return jsonify({'success': False, 'message': 'Lab not found'}), 404
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'message': 'No data provided'}), 400
+
+    old_values = (f"name={lab.name}, maxusers={lab.maxusers}, "
+                  f"reg_limit={lab.reg_limit}, max_misses={lab.max_misses}")
+    old_course_rel = RelCourseLab.query.filter_by(lab_id=lab_id).first()
+    old_course_id = old_course_rel.course_id if old_course_rel else None
+
+    name = data.get('name', '').strip()
+    course_id = data.get('course_id')
+    max_users = data.get('max_users')
+    date_end = data.get('date_end', '').strip() if data.get('date_end') else ''
+    max_misses = data.get('max_misses')
+
+    if name:
+        lab.name = name
+
+    if max_users is not None:
+        try:
+            lab.maxusers = int(max_users)
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'message': 'max_users must be a number'}), 400
+
+    if date_end:
+        # Accept YYYY-MM-DD from the HTML date input, store as dd/mm/yyyy
+        try:
+            parsed = datetime.strptime(date_end, '%Y-%m-%d')
+            lab.reg_limit = parsed.strftime('%d/%m/%Y')
+        except ValueError:
+            lab.reg_limit = date_end  # store as-is if format unknown
+
+    if max_misses is not None:
+        try:
+            lab.max_misses = int(max_misses)
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'message': 'max_misses must be a number'}), 400
+
+    if course_id is not None:
+        try:
+            course_id = int(course_id)
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'message': 'Invalid course_id'}), 400
+
+        if not Coursename.query.get(course_id):
+            return jsonify({'success': False, 'message': 'Course not found'}), 404
+
+        if old_course_rel:
+            old_course_rel.course_id = course_id
+        else:
+            db.session.add(RelCourseLab(course_id=course_id, lab_id=lab_id))
+
+    db.session.commit()
+
+    new_values = (f"name={lab.name}, maxusers={lab.maxusers}, "
+                  f"reg_limit={lab.reg_limit}, max_misses={lab.max_misses}")
+    audit_log('lab_updated',
+              old_value=f"{old_values}, course_id={old_course_id}",
+              new_value=f"{new_values}, course_id={course_id or old_course_id}",
+              reason=f"Admin edited lab {lab_id}")
+
+    new_course_rel = RelCourseLab.query.filter_by(lab_id=lab_id).first()
+    new_course = Coursename.query.get(new_course_rel.course_id) if new_course_rel else None
+
+    return jsonify({
+        'success': True,
+        'message': 'Lab updated',
+        'data': {
+            'lab_id': lab.lab_id,
+            'name': lab.name,
+            'maxusers': lab.maxusers,
+            'reg_limit': lab.reg_limit,
+            'max_misses': lab.max_misses,
+            'course_id': new_course_rel.course_id if new_course_rel else None,
+            'course_name': new_course.name if new_course else None
+        }
+    })
+
+
+@api_bp.route('/api/admin/labs', methods=['POST'])
+@require_permission('registrations', 'manage')
+def api_admin_create_lab():
+    """Admin-only: create a new lab and link it to a course."""
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Admin only'}), 403
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'message': 'No data provided'}), 400
+
+    name = data.get('name', '').strip()
+    course_id = data.get('course_id')
+    max_users = data.get('max_users')
+    date_end = data.get('date_end', '').strip() if data.get('date_end') else ''
+    max_misses = data.get('max_misses')
+    description = data.get('description', '').strip()
+
+    if not name:
+        return jsonify({'success': False, 'message': 'Lab name is required'}), 400
+
+    try:
+        max_users_int = int(max_users) if max_users is not None else 30
+    except (ValueError, TypeError):
+        return jsonify({'success': False, 'message': 'max_users must be a number'}), 400
+
+    try:
+        max_misses_int = int(max_misses) if max_misses is not None else 3
+    except (ValueError, TypeError):
+        return jsonify({'success': False, 'message': 'max_misses must be a number'}), 400
+
+    reg_limit = ''
+    if date_end:
+        try:
+            parsed = datetime.strptime(date_end, '%Y-%m-%d')
+            reg_limit = parsed.strftime('%d/%m/%Y')
+        except ValueError:
+            reg_limit = date_end
+
+    new_lab = CourseLab(
+        name=name,
+        description=description or '',
+        maxusers=max_users_int,
+        reg_limit=reg_limit,
+        max_misses=max_misses_int
+    )
+    db.session.add(new_lab)
+    db.session.flush()  # get the new lab_id
+
+    if course_id is not None:
+        try:
+            course_id = int(course_id)
+        except (ValueError, TypeError):
+            db.session.rollback()
+            return jsonify({'success': False, 'message': 'Invalid course_id'}), 400
+        if not Coursename.query.get(course_id):
+            db.session.rollback()
+            return jsonify({'success': False, 'message': 'Course not found'}), 404
+        db.session.add(RelCourseLab(course_id=course_id, lab_id=new_lab.lab_id))
+
+    db.session.commit()
+
+    audit_log('lab_created',
+              new_value=f"lab_id={new_lab.lab_id}, name={name}, course_id={course_id}",
+              reason='Admin created new lab')
+
+    return jsonify({
+        'success': True,
+        'message': 'Lab created',
+        'data': {
+            'lab_id': new_lab.lab_id,
+            'name': new_lab.name
+        }
+    }), 201
+
+
+# =============================================================================
+# ADMIN GROUP MANAGEMENT APIs
+# =============================================================================
+
+@api_bp.route('/api/admin/groups/<int:group_id>')
+@require_permission('registrations', 'manage')
+def api_admin_get_group(group_id):
+    """Return group details including assigned professor for pre-filling edit form."""
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Admin only'}), 403
+
+    group = LabGroup.query.get(group_id)
+    if not group:
+        return jsonify({'success': False, 'message': 'Group not found'}), 404
+
+    lab_rel = RelLabGroup.query.filter_by(group_id=group_id).first()
+    lab_id = lab_rel.lab_id if lab_rel else None
+    lab = CourseLab.query.get(lab_id) if lab_id else None
+
+    prof_rel = RelGroupProf.query.filter_by(group_id=group_id).first()
+    prof_id = prof_rel.prof_id if prof_rel else None
+
+    return jsonify({
+        'success': True,
+        'data': {
+            'group_id': group.group_id,
+            'daytime': group.daytime,
+            'year': group.year,
+            'finalize': group.finalize,
+            'lab_id': lab_id,
+            'lab_name': lab.name if lab else None,
+            'prof_id': prof_id
+        }
+    })
+
+
+@api_bp.route('/api/admin/groups', methods=['POST'])
+@require_permission('registrations', 'manage')
+def api_admin_create_group():
+    """Admin-only: create a new group, link it to a lab, optionally assign a professor."""
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Admin only'}), 403
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'message': 'No data provided'}), 400
+
+    lab_id = data.get('lab_id')
+    day = data.get('day', '').strip()
+    time_str = data.get('time', '').strip()
+    prof_id = data.get('prof_id')
+
+    if not lab_id:
+        return jsonify({'success': False, 'message': 'Lab is required'}), 400
+    if not day:
+        return jsonify({'success': False, 'message': 'Day is required'}), 400
+    if not time_str:
+        return jsonify({'success': False, 'message': 'Time is required'}), 400
+
+    lab = CourseLab.query.get(lab_id)
+    if not lab:
+        return jsonify({'success': False, 'message': 'Lab not found'}), 404
+
+    daytime = day + ' ' + time_str
+    academic_year = get_academic_year()
+
+    new_group = LabGroup(
+        daytime=daytime,
+        year=academic_year,
+        finalize=''
+    )
+    db.session.add(new_group)
+    db.session.flush()
+
+    db.session.add(RelLabGroup(lab_id=int(lab_id), group_id=new_group.group_id))
+
+    if prof_id:
+        prof = Professor.query.get(int(prof_id))
+        if not prof:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': 'Professor not found'}), 404
+        db.session.add(RelGroupProf(prof_id=int(prof_id), group_id=new_group.group_id))
+
+    db.session.commit()
+
+    audit_log('group_created',
+              new_value=f"group_id={new_group.group_id}, lab_id={lab_id}, daytime={daytime}, prof_id={prof_id}",
+              reason='Admin created new group')
+
+    return jsonify({
+        'success': True,
+        'message': 'Group created',
+        'data': {
+            'group_id': new_group.group_id,
+            'daytime': new_group.daytime,
+            'year': new_group.year
+        }
+    }), 201
+
+
+@api_bp.route('/api/admin/groups/<int:group_id>', methods=['PUT'])
+@require_permission('registrations', 'manage')
+def api_admin_edit_group(group_id):
+    """Admin-only: update group daytime and professor assignment."""
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Admin only'}), 403
+
+    group = LabGroup.query.get(group_id)
+    if not group:
+        return jsonify({'success': False, 'message': 'Group not found'}), 404
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'message': 'No data provided'}), 400
+
+    day = data.get('day', '').strip()
+    time_str = data.get('time', '').strip()
+    prof_id = data.get('prof_id')
+
+    old_daytime = group.daytime
+
+    if day and time_str:
+        group.daytime = day + ' ' + time_str
+    elif day:
+        group.daytime = day
+    elif time_str:
+        group.daytime = time_str
+
+    # Update professor assignment
+    if prof_id is not None:
+        # Remove all existing professor links for this group
+        RelGroupProf.query.filter_by(group_id=group_id).delete()
+
+        if prof_id:
+            prof = Professor.query.get(int(prof_id))
+            if not prof:
+                db.session.rollback()
+                return jsonify({'success': False, 'message': 'Professor not found'}), 404
+            db.session.add(RelGroupProf(prof_id=int(prof_id), group_id=group_id))
+
+    db.session.commit()
+
+    new_prof_rel = RelGroupProf.query.filter_by(group_id=group_id).first()
+
+    audit_log('group_updated',
+              old_value=f"daytime={old_daytime}",
+              new_value=f"daytime={group.daytime}, prof_id={new_prof_rel.prof_id if new_prof_rel else None}",
+              reason=f"Admin edited group {group_id}")
+
+    return jsonify({
+        'success': True,
+        'message': 'Group updated',
+        'data': {
+            'group_id': group.group_id,
+            'daytime': group.daytime,
+            'prof_id': new_prof_rel.prof_id if new_prof_rel else None
+        }
+    })
+
+
 @api_bp.route('/api/labs/<int:lab_id>/description', methods=['PUT'])
 @require_permission('labs', 'edit')
 def api_edit_lab_description(lab_id):

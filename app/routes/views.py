@@ -56,9 +56,11 @@ def my_enrollments():
 def labs_page():
     """Labs listing."""
     labs = CourseLab.query.all()
+    courses = Coursename.query.order_by(Coursename.semester, Coursename.name).all() if session.get('role') == 'admin' else []
     return render_template('labs.html',
                            active_page='labs',
-                           labs=labs)
+                           labs=labs,
+                           courses=courses)
 
 
 @views_bp.route('/groups-view')
@@ -89,9 +91,17 @@ def groups_page():
             'is_full': occupancy['is_full']
         })
 
+    all_labs = []
+    professors = []
+    if session.get('role') == 'admin':
+        all_labs = CourseLab.query.order_by(CourseLab.name).all()
+        professors = Professor.query.order_by(Professor.name).all()
+
     return render_template('groups.html',
                            active_page='groups',
-                           groups=groups)
+                           groups=groups,
+                           all_labs=all_labs,
+                           professors=professors)
 
 
 @views_bp.route('/students-view')

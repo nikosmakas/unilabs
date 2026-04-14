@@ -7,7 +7,14 @@
 {% endblock %}
 
 {% block content %}
-<h2><i class="fas fa-users me-2"></i>Τμήματα</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0"><i class="fas fa-users me-2"></i>Τμήματα</h2>
+    {% if role == 'admin' %}
+    <button class="btn btn-success" onclick="openCreateGroupModal()">
+        <i class="fas fa-plus me-1"></i>Δημιουργία Τμήματος
+    </button>
+    {% endif %}
+</div>
 <div class="table-responsive">
     <table class="table table-striped table-hover sortable">
         <thead class="table-dark">
@@ -18,6 +25,9 @@
                 <th>Έτος</th>
                 <th>Πληρότητα</th>
                 <th>Διαθέσιμες Θέσεις</th>
+                {% if role == 'admin' %}
+                <th>Ενέργειες</th>
+                {% endif %}
             </tr>
         </thead>
         <tbody>
@@ -29,7 +39,7 @@
                 <td>{{ group.year }}</td>
                 <td>
                     <div class="progress occupancy-bar occupancy-bar-inline">
-                        <div class="progress-bar {% if group.occupancy_percentage >= 90 %}bg-danger{% elif group.occupancy_percentage >= 70 %}bg-warning{% else %}bg-success{% endif %}" 
+                        <div class="progress-bar {% if group.occupancy_percentage >= 90 %}bg-danger{% elif group.occupancy_percentage >= 70 %}bg-warning{% else %}bg-success{% endif %}"
                              style="width: {{ group.occupancy_percentage }}%"></div>
                     </div>
                     <small>{{ group.occupancy_percentage|round(0) }}%</small>
@@ -41,9 +51,206 @@
                     <span class="badge bg-success">{{ group.available_spots }}</span>
                     {% endif %}
                 </td>
+                {% if role == 'admin' %}
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="openEditGroupModal({{ group.group_id }})" title="Επεξεργασία">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
+                </td>
+                {% endif %}
             </tr>
         {% endfor %}
         </tbody>
     </table>
 </div>
+
+{% if role == 'admin' %}
+<!-- Group Admin Modal -->
+<div class="modal fade" id="groupAdminModal" tabindex="-1" aria-labelledby="groupAdminModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="groupAdminModalLabel">
+            <i class="fas fa-users me-2"></i><span id="groupModalTitle">Τμήμα</span>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="groupModalLoading" class="text-center py-4 d-none">
+            <div class="spinner-border text-primary" role="status"></div>
+        </div>
+        <div id="groupModalContent">
+          <div class="mb-3" id="groupLabSelectWrap">
+            <label for="groupLabSelect" class="form-label">Εργαστήριο</label>
+            <select class="form-select" id="groupLabSelect">
+              <option value="">-- Επιλέξτε εργαστήριο --</option>
+              {% for lab in all_labs %}
+              <option value="{{ lab.lab_id }}">{{ lab.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="groupDaySelect" class="form-label">Ημέρα</label>
+            <select class="form-select" id="groupDaySelect">
+              <option value="">-- Επιλέξτε ημέρα --</option>
+              <option value="Δευτέρα">Δευτέρα</option>
+              <option value="Τρίτη">Τρίτη</option>
+              <option value="Τετάρτη">Τετάρτη</option>
+              <option value="Πέμπτη">Πέμπτη</option>
+              <option value="Παρασκευή">Παρασκευή</option>
+              <option value="Σάββατο">Σάββατο</option>
+              <option value="Κυριακή">Κυριακή</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="groupTimeInput" class="form-label">Ώρα (π.χ. 10:00 - 12:00)</label>
+            <input type="text" class="form-control" id="groupTimeInput" placeholder="10:00 - 12:00">
+          </div>
+          <div class="mb-3">
+            <label for="groupProfSelect" class="form-label">Υπεύθυνος Καθηγητής</label>
+            <select class="form-select" id="groupProfSelect">
+              <option value="">-- Χωρίς ανάθεση --</option>
+              {% for prof in professors %}
+              <option value="{{ prof.prof_id }}">{{ prof.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div id="groupModalAlert"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Άκυρο</button>
+        <button type="button" class="btn btn-primary" id="groupSaveBtn" onclick="saveGroupAdmin()">
+            <i class="fas fa-save me-1"></i>Αποθήκευση
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if role == 'admin' %}
+<script>
+var currentGroupId = null;
+var isGroupCreateMode = false;
+var DAYS = ['Δευτέρα','Τρίτη','Τετάρτη','Πέμπτη','Παρασκευή','Σάββατο','Κυριακή'];
+
+function openCreateGroupModal() {
+    currentGroupId = null;
+    isGroupCreateMode = true;
+    document.getElementById('groupModalTitle').textContent = 'Νέο Τμήμα';
+    document.getElementById('groupLabSelectWrap').classList.remove('d-none');
+    document.getElementById('groupLabSelect').disabled = false;
+    document.getElementById('groupLabSelect').value = '';
+    document.getElementById('groupDaySelect').value = '';
+    document.getElementById('groupTimeInput').value = '';
+    document.getElementById('groupProfSelect').value = '';
+    document.getElementById('groupModalAlert').innerHTML = '';
+    document.getElementById('groupModalLoading').classList.add('d-none');
+    document.getElementById('groupSaveBtn').innerHTML = '<i class="fas fa-plus me-1"></i>Δημιουργία';
+    new bootstrap.Modal(document.getElementById('groupAdminModal')).show();
+}
+
+function openEditGroupModal(groupId) {
+    currentGroupId = groupId;
+    isGroupCreateMode = false;
+    var loading = document.getElementById('groupModalLoading');
+    var alertBox = document.getElementById('groupModalAlert');
+    loading.classList.remove('d-none');
+    alertBox.innerHTML = '';
+    document.getElementById('groupModalTitle').textContent = 'Επεξεργασία Τμήματος #' + groupId;
+    document.getElementById('groupLabSelectWrap').classList.add('d-none');
+    document.getElementById('groupSaveBtn').innerHTML = '<i class="fas fa-save me-1"></i>Αποθήκευση';
+    new bootstrap.Modal(document.getElementById('groupAdminModal')).show();
+
+    fetch('/api/admin/groups/' + groupId)
+        .then(function(r) { return r.json(); })
+        .then(function(resp) {
+            loading.classList.add('d-none');
+            if (!resp.success) {
+                alertBox.innerHTML = '<div class="alert alert-danger">' + resp.message + '</div>';
+                return;
+            }
+            var d = resp.data;
+            // Parse daytime: try to split "Day HH:MM - HH:MM"
+            var parsedDay = '';
+            var parsedTime = d.daytime || '';
+            for (var i = 0; i < DAYS.length; i++) {
+                if (d.daytime && d.daytime.indexOf(DAYS[i]) === 0) {
+                    parsedDay = DAYS[i];
+                    parsedTime = d.daytime.substring(DAYS[i].length).trim();
+                    break;
+                }
+            }
+            document.getElementById('groupDaySelect').value = parsedDay;
+            document.getElementById('groupTimeInput').value = parsedTime;
+            document.getElementById('groupProfSelect').value = d.prof_id ? d.prof_id : '';
+        })
+        .catch(function() {
+            loading.classList.add('d-none');
+            alertBox.innerHTML = '<div class="alert alert-danger">Σφάλμα φόρτωσης.</div>';
+        });
+}
+
+function showGroupAlert(type, message) {
+    var icon = type === 'success' ? 'check-circle' : 'exclamation-circle';
+    document.getElementById('groupModalAlert').innerHTML =
+        '<div class="alert alert-' + type + ' alert-dismissible fade show">' +
+        '<i class="fas fa-' + icon + ' me-1"></i>' + message +
+        '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
+}
+
+function saveGroupAdmin() {
+    var day = document.getElementById('groupDaySelect').value;
+    var time = document.getElementById('groupTimeInput').value.trim();
+    var profId = document.getElementById('groupProfSelect').value;
+
+    if (!day) { showGroupAlert('warning', 'Επιλέξτε ημέρα.'); return; }
+    if (!time) { showGroupAlert('warning', 'Εισάγετε ώρα.'); return; }
+
+    var body = {
+        day: day,
+        time: time
+    };
+    if (profId) body.prof_id = parseInt(profId);
+    else body.prof_id = null;
+
+    if (isGroupCreateMode) {
+        var labId = document.getElementById('groupLabSelect').value;
+        if (!labId) { showGroupAlert('warning', 'Επιλέξτε εργαστήριο.'); return; }
+        body.lab_id = parseInt(labId);
+
+        fetch('/api/admin/groups', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                showGroupAlert('success', 'Το τμήμα δημιουργήθηκε (ID: ' + data.data.group_id + ').');
+                setTimeout(function() { location.reload(); }, 1200);
+            } else { showGroupAlert('danger', data.message); }
+        })
+        .catch(function() { showGroupAlert('danger', 'Σφάλμα δημιουργίας.'); });
+    } else {
+        fetch('/api/admin/groups/' + currentGroupId, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                showGroupAlert('success', 'Το τμήμα ενημερώθηκε.');
+                setTimeout(function() { location.reload(); }, 1200);
+            } else { showGroupAlert('danger', data.message); }
+        })
+        .catch(function() { showGroupAlert('danger', 'Σφάλμα αποθήκευσης.'); });
+    }
+}
+</script>
+{% endif %}
 {% endblock %}
