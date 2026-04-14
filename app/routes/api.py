@@ -815,17 +815,16 @@ def api_import_eligible(course_id):
         else:
             return jsonify({'success': False, 'message': 'Unable to decode file'}), 400
 
-        reader = csv.reader(io.StringIO(text))
+        # Robust parsing: split by newlines AND commas so we handle
+        # both standard CSV rows and comma-separated AMs on a single line.
+        tokens = []
+        for line in text.splitlines():
+            tokens.extend(line.split(','))
         ams = []
-        for row in reader:
-            if not row:
-                continue
-            val = row[0].strip()
-            # Skip header-like rows
-            try:
+        for token in tokens:
+            val = token.strip()
+            if val.isdigit():
                 ams.append(int(val))
-            except ValueError:
-                continue
 
         if not ams:
             return jsonify({'success': False, 'message': 'No valid AMs found in file'}), 400

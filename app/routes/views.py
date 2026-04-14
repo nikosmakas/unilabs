@@ -122,8 +122,10 @@ def registrations_page():
     registrations = []
     for reg in registrations_raw:
         lab = CourseLab.query.get(reg.lab_id)
+        student = Student.query.get(reg.am)
         registrations.append({
             'am': reg.am,
+            'student_name': student.name if student else '’γνωστος',
             'lab_id': reg.lab_id,
             'lab_name': lab.name if lab else 'Unknown',
             'status': reg.status,
@@ -138,7 +140,16 @@ def registrations_page():
 @require_permission('absences', 'view_group')
 def absences_page():
     """Absences listing (professors/admins only)."""
-    absences = StudentMissesPerGroup.query.all()
+    absences_raw = StudentMissesPerGroup.query.all()
+    absences = []
+    for miss in absences_raw:
+        student = Student.query.get(miss.am)
+        absences.append({
+            'am': miss.am,
+            'student_name': student.name if student else '’γνωστος',
+            'group_id': miss.group_id,
+            'misses': miss.misses,
+        })
     return render_template('absences.html',
                            active_page='absences',
                            absences=absences)

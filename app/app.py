@@ -1,4 +1,4 @@
-from flask import Flask, session, jsonify
+from flask import Flask, session, jsonify, render_template
 from models import db, init_app
 from auth import get_academic_year
 import os
@@ -45,7 +45,7 @@ def forbidden(error):
 
 @app.errorhandler(404)
 def not_found(error):
-    return jsonify({'error': 'Resource not found'}), 404
+    return render_template('404.html', active_page=''), 404
 
 # =============================================================================
 # REGISTER BLUEPRINTS

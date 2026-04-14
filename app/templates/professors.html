@@ -16,13 +16,95 @@
                 <h5 class="card-title">{{ prof.name }}</h5>
                 <h6 class="card-subtitle mb-2 text-muted">{{ prof.status }}</h6>
                 <p class="card-text">
-                    <i class="fas fa-door-open me-1"></i>{{ prof.office }}<br>
+                    <i class="fas fa-door-open me-1"></i><span id="office-{{ prof.prof_id }}">{{ prof.office }}</span><br>
                     <i class="fas fa-envelope me-1"></i><a href="mailto:{{ prof.email }}">{{ prof.email }}</a><br>
-                    <i class="fas fa-phone me-1"></i>{{ prof.tel }}
+                    <i class="fas fa-phone me-1"></i><span id="tel-{{ prof.prof_id }}">{{ prof.tel }}</span>
                 </p>
+                {% if role == 'admin' %}
+                <button class="btn btn-sm btn-outline-primary" onclick="openEditModal({{ prof.prof_id }}, '{{ prof.office }}', '{{ prof.tel }}')">
+                    <i class="fas fa-edit me-1"></i>Επεξεργασία
+                </button>
+                {% endif %}
             </div>
         </div>
     </div>
     {% endfor %}
 </div>
+
+{% if role == 'admin' %}
+<!-- Edit Professor Modal -->
+<div class="modal fade" id="editProfModal" tabindex="-1" aria-labelledby="editProfModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editProfModalLabel">Επεξεργασία Καθηγητή</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editProfId">
+        <div class="mb-3">
+          <label for="editProfOffice" class="form-label">Γραφείο</label>
+          <input type="text" class="form-control" id="editProfOffice">
+        </div>
+        <div class="mb-3">
+          <label for="editProfTel" class="form-label">Τηλέφωνο</label>
+          <input type="text" class="form-control" id="editProfTel">
+        </div>
+        <div id="editProfAlert"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Άκυρο</button>
+        <button type="button" class="btn btn-primary" onclick="submitProfEdit()">Αποθήκευση</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if role == 'admin' %}
+<script>
+function openEditModal(profId, office, tel) {
+    document.getElementById('editProfId').value = profId;
+    document.getElementById('editProfOffice').value = office;
+    document.getElementById('editProfTel').value = tel;
+    document.getElementById('editProfAlert').innerHTML = '';
+    new bootstrap.Modal(document.getElementById('editProfModal')).show();
+}
+
+function submitProfEdit() {
+    const profId = document.getElementById('editProfId').value;
+    const office = document.getElementById('editProfOffice').value.trim();
+    const tel = document.getElementById('editProfTel').value.trim();
+
+    if (!office && !tel) {
+        document.getElementById('editProfAlert').innerHTML =
+            '<div class="alert alert-warning">Συμπληρώστε τουλάχιστον ένα πεδίο.</div>';
+        return;
+    }
+
+    fetch(`/api/professor/profile?prof_id=${profId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ office: office, tel: tel })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('office-' + profId).textContent = data.data.office;
+            document.getElementById('tel-' + profId).textContent = data.data.tel;
+            bootstrap.Modal.getInstance(document.getElementById('editProfModal')).hide();
+        } else {
+            document.getElementById('editProfAlert').innerHTML =
+                `<div class="alert alert-danger">${data.message}</div>`;
+        }
+    })
+    .catch(() => {
+        document.getElementById('editProfAlert').innerHTML =
+            '<div class="alert alert-danger">Σφάλμα κατά την αποθήκευση.</div>';
+    });
+}
+</script>
+{% endif %}
 {% endblock %}
