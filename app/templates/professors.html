@@ -20,7 +20,7 @@
                     <i class="fas fa-envelope me-1"></i><a href="mailto:{{ prof.email }}">{{ prof.email }}</a><br>
                     <i class="fas fa-phone me-1"></i><span id="tel-{{ prof.prof_id }}">{{ prof.tel }}</span>
                 </p>
-                {% if role == 'admin' %}
+                {% if role == 'admin' or (role == 'professor' and session.get('schGrAcPersonID')|string == prof.prof_id|string) %}
                 <button class="btn btn-sm btn-outline-primary" onclick="openEditModal({{ prof.prof_id }}, '{{ prof.office }}', '{{ prof.tel }}')">
                     <i class="fas fa-edit me-1"></i>Επεξεργασία
                 </button>
@@ -31,7 +31,7 @@
     {% endfor %}
 </div>
 
-{% if role == 'admin' %}
+{% if role == 'admin' or role == 'professor' %}
 <!-- Edit Professor Modal -->
 <div class="modal fade" id="editProfModal" tabindex="-1" aria-labelledby="editProfModalLabel" aria-hidden="true">
   <div class="modal-dialog">
@@ -63,7 +63,7 @@
 {% endblock %}
 
 {% block scripts %}
-{% if role == 'admin' %}
+{% if role == 'admin' or role == 'professor' %}
 <script>
 function openEditModal(profId, office, tel) {
     document.getElementById('editProfId').value = profId;
@@ -84,7 +84,12 @@ function submitProfEdit() {
         return;
     }
 
-    fetch(`/api/professor/profile?prof_id=${profId}`, {
+    const role = '{{ role }}';
+    const url = role === 'admin'
+        ? `/api/professor/profile?prof_id=${profId}`
+        : '/api/professor/profile';
+
+    fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ office: office, tel: tel })

@@ -1,7 +1,7 @@
 import json
 import functools
 import os
-from flask import session, abort, request
+from flask import session, abort, request, flash, redirect, url_for
 from models import db, Student, Professor, RelGroupStudent, LabGroup, CourseLab, RelLabStudent, RelLabGroup, StudentMissesPerGroup, Coursename, RelCourseLab
 from sqlalchemy import and_
 import logging
@@ -61,6 +61,11 @@ class PermissionMatrix:
 # DECORATORS
 # =============================================================================
 
+def _is_api_request():
+    """Return True if the current request targets an API endpoint."""
+    return request.path.startswith('/api/')
+
+
 def require_permission(resource, action):
     """Decorator for requiring specific permission"""
     def decorator(f):
@@ -75,7 +80,13 @@ def require_permission(resource, action):
             
             if not matrix.has_permission(role, resource, action):
                 logger.warning(f"Permission denied: {role} tried to access {resource}.{action}")
-                abort(403, description="Insufficient permissions")
+                if _is_api_request():
+                    abort(403, description="Insufficient permissions")
+                if role == 'guest':
+                    flash('Πρέπει να συνδεθείτε πρώτα.', 'warning')
+                    return redirect(url_for('auth_bp.login'))
+                flash('Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.', 'danger')
+                return redirect(url_for('views_bp.dashboard'))
             
             return f(*args, **kwargs)
         return decorated_function
@@ -87,12 +98,18 @@ def require_role(*roles):
         @functools.wraps(f)
         def decorated_function(*args, **kwargs):
             if 'schGrAcPersonID' not in session:
-                abort(401, description="Authentication required")
+                if _is_api_request():
+                    abort(401, description="Authentication required")
+                flash('Πρέπει να συνδεθείτε πρώτα.', 'warning')
+                return redirect(url_for('auth_bp.login'))
             
             user_role = session.get('role', 'guest')
             if user_role not in roles:
                 logger.warning(f"Role denied: {user_role} tried to access endpoint requiring {roles}")
-                abort(403, description="Insufficient role permissions")
+                if _is_api_request():
+                    abort(403, description="Insufficient role permissions")
+                flash('Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.', 'danger')
+                return redirect(url_for('views_bp.dashboard'))
             
             return f(*args, **kwargs)
         return decorated_function
