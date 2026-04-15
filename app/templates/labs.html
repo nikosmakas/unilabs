@@ -46,6 +46,9 @@
                     <a href="/api/admin/lab/{{ lab.lab_id }}/export" class="btn btn-sm btn-outline-primary" download title="Εξαγωγή CSV">
                         <i class="fas fa-file-csv"></i>
                     </a>
+                    <button class="btn btn-sm btn-outline-danger ms-1" onclick="deleteLab({{ lab.lab_id }}, '{{ lab.name }}')" title="Διαγραφή">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </td>
                 {% endif %}
             </tr>
@@ -283,6 +286,21 @@ function saveDescription() {
 }
 
 {% if role == 'admin' %}
+function deleteLab(labId, labName) {
+    if (!confirm('Διαγραφή εργαστηρίου "' + labName + '";\nΑυτή η ενέργεια δεν αναιρείται.')) return;
+    fetch('/api/admin/labs/' + labId, { method: 'DELETE' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                alert('Το εργαστήριο διαγράφηκε.');
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(function() { alert('Σφάλμα διαγραφής.'); });
+}
+
 function saveLabAdmin() {
     var name = document.getElementById('adminLabName').value.trim();
     var courseId = document.getElementById('adminLabCourse').value;

@@ -41,6 +41,12 @@
                         <span id="groupStudentsInfo"></span>
                         <span class="badge bg-info" id="groupStudentsCount"></span>
                     </div>
+                    <div class="input-group input-group-sm mb-3" style="max-width:350px">
+                        <input type="number" class="form-control" id="addStudentAmInput" placeholder="Α.Μ. Φοιτητή" min="1">
+                        <button class="btn btn-success" type="button" onclick="forceAddStudent()">
+                            <i class="fas fa-user-plus me-1"></i>Προσθήκη
+                        </button>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-hover" id="groupStudentsTable">
                             <thead class="table-light">
@@ -52,6 +58,7 @@
                                     <th>Απουσίες</th>
                                     <th>Βαθμός</th>
                                     <th>Κατάσταση</th>
+                                    <th>Ενέργειες</th>
                                 </tr>
                             </thead>
                             <tbody id="groupStudentsBody"></tbody>
@@ -297,6 +304,7 @@
                         +   `</div>`
                         + `</td>`
                         + `<td class="status-cell">${statusBadge(student.status)}</td>`
+                        + `<td><button class="btn btn-sm btn-outline-danger remove-student-btn" title="Αφαίρεση"><i class="fas fa-user-times"></i></button></td>`
                         + `</tr>`;
                 });
                 document.getElementById('groupStudentsBody').innerHTML = html;
@@ -335,6 +343,14 @@
                         }
                     });
                 });
+
+                // Remove student buttons
+                document.querySelectorAll('.remove-student-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const row = this.closest('tr');
+                        forceRemoveStudent(currentModalGroupId, row.dataset.am, row);
+                    });
+                });
             } else {
                 empty.classList.remove('d-none');
             }
@@ -344,6 +360,91 @@
             empty.classList.remove('d-none');
             empty.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>Σφάλμα φόρτωσης φοιτητών.';
             empty.className = 'alert alert-danger';
+        }
+    }
+
+    // ── Force remove / add student ───────────────────────────
+
+    async function forceRemoveStudent(groupId, am, row) {
+        if (!confirm('Αφαίρεση φοιτητή ΑΜ ' + am + ' από το τμήμα;')) return;
+        try {
+            const response = await fetch(`/api/professor/group/${groupId}/student/${am}/remove`, {
+                method: 'DELETE'
+            });
+            const data = await response.json();
+            if (data.success) {
+                row.remove();
+                showToast('success', `ΑΜ ${am}: Αφαιρέθηκε από το τμήμα.`);
+                // Update count badge
+                const countEl = document.getElementById('groupStudentsCount');
+                const current = parseInt(countEl.textContent) || 0;
+                if (current > 0) countEl.textContent = (current - 1) + ' φοιτητές';
+            } else {
+                showToast('danger', data.message);
+            }
+        } catch (error) {
+            console.error('Remove student error:', error);
+            showToast('danger', 'Σφάλμα αφαίρεσης.');
+        }
+    }
+
+    async function forceAddStudent() {
+        const input = document.getElementById('addStudentAmInput');
+        const am = input.value.trim();
+        if (!am) { showToast('warning', 'Εισάγετε Α.Μ. φοιτητή.'); return; }
+        try {
+            const response = await fetch(`/api/professor/group/${currentModalGroupId}/student/add`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ am: parseInt(am) })
+            });
+            const data = await response.json();
+            if (data.success) {
+                const s = data.data;
+                const newRow = document.createElement('tr');
+                newRow.dataset.am = s.am;
+                newRow.innerHTML = `<td>${s.am}</td>`
+                    + `<td>${s.name}</td>`
+                    + `<td><a href="mailto:${s.email}">${s.email}</a></td>`
+                    + `<td><span class="badge bg-secondary">${s.semester}ο</span></td>`
+                    + `<td>${buildAbsenceCell({absences_count:0, absences_list:[]})}</td>`
+                    + `<td><div class="input-group input-group-sm" style="width:120px">`
+                    +   `<input type="number" min="0" max="10" class="form-control form-control-sm grade-input" value="0">`
+                    +   `<button class="btn btn-success btn-sm save-grade-btn" type="button" title="Αποθήκευση"><i class="fas fa-save"></i></button>`
+                    + `</div></td>`
+                    + `<td class="status-cell">${statusBadge('Σε Εξέλιξη')}</td>`
+                    + `<td><button class="btn btn-sm btn-outline-danger remove-student-btn" title="Αφαίρεση"><i class="fas fa-user-times"></i></button></td>`;
+                document.getElementById('groupStudentsBody').appendChild(newRow);
+
+                // Bind events on the new row
+                newRow.querySelector('.save-grade-btn').addEventListener('click', function() {
+                    const grade = parseInt(newRow.querySelector('.grade-input').value);
+                    if (isNaN(grade) || grade < 0 || grade > 10) { showToast('danger', 'Ο βαθμός πρέπει να είναι 0-10.'); return; }
+                    saveGrade(currentModalGroupId, s.am, grade, newRow);
+                });
+                newRow.querySelector('.add-absence-btn').addEventListener('click', function() {
+                    addAbsence(currentModalGroupId, s.am, newRow, '');
+                });
+                newRow.querySelector('.absence-count-badge').addEventListener('click', function() {
+                    const dl = newRow.querySelector('.absence-dates-list');
+                    dl.classList.toggle('d-none');
+                    if (!dl.classList.contains('d-none')) bindRemoveButtons(newRow);
+                });
+                newRow.querySelector('.remove-student-btn').addEventListener('click', function() {
+                    forceRemoveStudent(currentModalGroupId, s.am, newRow);
+                });
+
+                input.value = '';
+                showToast('success', `ΑΜ ${s.am} (${s.name}): Προστέθηκε.`);
+                const countEl = document.getElementById('groupStudentsCount');
+                const current = parseInt(countEl.textContent) || 0;
+                countEl.textContent = (current + 1) + ' φοιτητές';
+            } else {
+                showToast('danger', data.message);
+            }
+        } catch (error) {
+            console.error('Add student error:', error);
+            showToast('danger', 'Σφάλμα προσθήκης.');
         }
     }
 </script>

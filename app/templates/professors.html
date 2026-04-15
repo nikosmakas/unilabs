@@ -7,7 +7,14 @@
 {% endblock %}
 
 {% block content %}
-<h2><i class="fas fa-user-tie me-2"></i>Υπεύθυνοι Εργαστηρίων</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0"><i class="fas fa-user-tie me-2"></i>Υπεύθυνοι Εργαστηρίων</h2>
+    {% if role == 'admin' %}
+    <button class="btn btn-success" onclick="openCreateProfModal()">
+        <i class="fas fa-plus me-1"></i>Προσθήκη Καθηγητή
+    </button>
+    {% endif %}
+</div>
 <div class="row">
     {% for prof in professors %}
     <div class="col-md-6 col-lg-4 mb-3">
@@ -23,6 +30,11 @@
                 {% if role == 'admin' or (role == 'professor' and session.get('schGrAcPersonID')|string == prof.prof_id|string) %}
                 <button class="btn btn-sm btn-outline-primary" onclick="openEditModal({{ prof.prof_id }}, '{{ prof.office }}', '{{ prof.tel }}')">
                     <i class="fas fa-edit me-1"></i>Επεξεργασία
+                </button>
+                {% endif %}
+                {% if role == 'admin' %}
+                <button class="btn btn-sm btn-outline-danger ms-1" onclick="deleteProfessor({{ prof.prof_id }}, '{{ prof.name }}')">
+                    <i class="fas fa-trash"></i>
                 </button>
                 {% endif %}
             </div>
@@ -55,6 +67,55 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Άκυρο</button>
         <button type="button" class="btn btn-primary" onclick="submitProfEdit()">Αποθήκευση</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if role == 'admin' %}
+<!-- Create Professor Modal -->
+<div class="modal fade" id="createProfModal" tabindex="-1" aria-labelledby="createProfModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="createProfModalLabel">
+            <i class="fas fa-user-plus me-2"></i>Νέος Καθηγητής
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label for="newProfSurname" class="form-label">Επώνυμο</label>
+            <input type="text" class="form-control" id="newProfSurname" placeholder="π.χ. Παπαδόπουλος">
+          </div>
+          <div class="col-md-6">
+            <label for="newProfName" class="form-label">Όνομα</label>
+            <input type="text" class="form-control" id="newProfName" placeholder="π.χ. Νίκος">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label for="newProfEmail" class="form-label">Email</label>
+          <input type="email" class="form-control" id="newProfEmail" placeholder="prof@uoi.gr">
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label for="newProfOffice" class="form-label">Γραφείο</label>
+            <input type="text" class="form-control" id="newProfOffice" placeholder="π.χ. Α305">
+          </div>
+          <div class="col-md-6">
+            <label for="newProfTel" class="form-label">Τηλέφωνο</label>
+            <input type="text" class="form-control" id="newProfTel" placeholder="π.χ. 26510-12345">
+          </div>
+        </div>
+        <div id="createProfAlert"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Άκυρο</button>
+        <button type="button" class="btn btn-primary" onclick="saveProfessor()">
+            <i class="fas fa-plus me-1"></i>Δημιουργία
+        </button>
       </div>
     </div>
   </div>
@@ -110,6 +171,63 @@ function submitProfEdit() {
             '<div class="alert alert-danger">Σφάλμα κατά την αποθήκευση.</div>';
     });
 }
+
+{% if role == 'admin' %}
+function openCreateProfModal() {
+    document.getElementById('newProfName').value = '';
+    document.getElementById('newProfSurname').value = '';
+    document.getElementById('newProfEmail').value = '';
+    document.getElementById('newProfOffice').value = '';
+    document.getElementById('newProfTel').value = '';
+    document.getElementById('createProfAlert').innerHTML = '';
+    new bootstrap.Modal(document.getElementById('createProfModal')).show();
+}
+
+function saveProfessor() {
+    const name = document.getElementById('newProfName').value.trim();
+    const surname = document.getElementById('newProfSurname').value.trim();
+    const email = document.getElementById('newProfEmail').value.trim();
+    const office = document.getElementById('newProfOffice').value.trim();
+    const tel = document.getElementById('newProfTel').value.trim();
+    const alertBox = document.getElementById('createProfAlert');
+
+    if (!name || !surname) { alertBox.innerHTML = '<div class="alert alert-warning">Εισάγετε όνομα και επώνυμο.</div>'; return; }
+    if (!email) { alertBox.innerHTML = '<div class="alert alert-warning">Εισάγετε email.</div>'; return; }
+
+    fetch('/api/admin/professors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, surname: surname, email: email, office: office, tel: tel })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alertBox.innerHTML = '<div class="alert alert-success">Ο καθηγητής δημιουργήθηκε (ID: ' + data.data.prof_id + ').</div>';
+            setTimeout(() => location.reload(), 1200);
+        } else {
+            alertBox.innerHTML = '<div class="alert alert-danger">' + data.message + '</div>';
+        }
+    })
+    .catch(() => {
+        alertBox.innerHTML = '<div class="alert alert-danger">Σφάλμα δημιουργίας.</div>';
+    });
+}
+
+function deleteProfessor(profId, profName) {
+    if (!confirm('Διαγραφή καθηγητή "' + profName + '";\nΑυτή η ενέργεια δεν αναιρείται.')) return;
+    fetch('/api/admin/professors/' + profId, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('Ο καθηγητής διαγράφηκε.');
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(() => alert('Σφάλμα διαγραφής.'));
+}
+{% endif %}
 </script>
 {% endif %}
 {% endblock %}

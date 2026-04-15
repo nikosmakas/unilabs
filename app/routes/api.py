@@ -6,7 +6,7 @@ import io
 from models import (
     Student, Professor, db, LabGroup, CourseLab, RelGroupStudent,
     Coursename, RelCourseLab, RelLabGroup, RelLabStudent,
-    StudentMissesPerGroup, RelGroupProf, CourseEligibility
+    StudentMissesPerGroup, RelGroupProf, CourseEligibility, Coursetoprof
 )
 from auth import (
     require_permission, audit_log, mask_pii,
@@ -845,6 +845,44 @@ def api_admin_edit_lab(lab_id):
     })
 
 
+@api_bp.route('/api/admin/labs/<int:lab_id>', methods=['DELETE'])
+@require_permission('registrations', 'manage')
+def api_admin_delete_lab(lab_id):
+    """Admin-only: delete a lab if it has no active groups or enrolled students."""
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Admin only'}), 403
+
+    lab = CourseLab.query.get(lab_id)
+    if not lab:
+        return jsonify({'success': False, 'message': 'Lab not found'}), 404
+
+    # Block if groups exist
+    group_count = RelLabGroup.query.filter_by(lab_id=lab_id).count()
+    if group_count > 0:
+        return jsonify({'success': False,
+                        'message': f'Cannot delete: lab has {group_count} group(s). Remove them first.'}), 400
+
+    # Block if students enrolled
+    student_count = RelLabStudent.query.filter_by(lab_id=lab_id).count()
+    if student_count > 0:
+        return jsonify({'success': False,
+                        'message': f'Cannot delete: {student_count} student(s) enrolled. Remove them first.'}), 400
+
+    try:
+        RelCourseLab.query.filter_by(lab_id=lab_id).delete()
+        db.session.delete(lab)
+        db.session.commit()
+
+        audit_log('lab_deleted',
+                  old_value=f"lab_id={lab_id}, name={lab.name}",
+                  reason='Admin deleted lab')
+
+        return jsonify({'success': True, 'message': 'Lab deleted'})
+    except Exception:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'Delete failed'}), 500
+
+
 @api_bp.route('/api/admin/labs', methods=['POST'])
 @require_permission('registrations', 'manage')
 def api_admin_create_lab():
@@ -1021,6 +1059,39 @@ def api_admin_create_group():
     }), 201
 
 
+@api_bp.route('/api/admin/groups/<int:group_id>', methods=['DELETE'])
+@require_permission('registrations', 'manage')
+def api_admin_delete_group(group_id):
+    """Admin-only: delete a group if no students are enrolled."""
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Admin only'}), 403
+
+    group = LabGroup.query.get(group_id)
+    if not group:
+        return jsonify({'success': False, 'message': 'Group not found'}), 404
+
+    student_count = RelGroupStudent.query.filter_by(group_id=group_id).count()
+    if student_count > 0:
+        return jsonify({'success': False,
+                        'message': f'Cannot delete: {student_count} student(s) enrolled. Remove them first.'}), 400
+
+    try:
+        RelLabGroup.query.filter_by(group_id=group_id).delete()
+        RelGroupProf.query.filter_by(group_id=group_id).delete()
+        StudentMissesPerGroup.query.filter_by(group_id=group_id).delete()
+        db.session.delete(group)
+        db.session.commit()
+
+        audit_log('group_deleted',
+                  old_value=f"group_id={group_id}, daytime={group.daytime}",
+                  reason='Admin deleted group')
+
+        return jsonify({'success': True, 'message': 'Group deleted'})
+    except Exception:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'Delete failed'}), 500
+
+
 @api_bp.route('/api/admin/groups/<int:group_id>', methods=['PUT'])
 @require_permission('registrations', 'manage')
 def api_admin_edit_group(group_id):
@@ -1079,6 +1150,121 @@ def api_admin_edit_group(group_id):
             'prof_id': new_prof_rel.prof_id if new_prof_rel else None
         }
     })
+
+
+# =============================================================================
+# FORCE ADD / REMOVE STUDENT APIs (Professor or Admin)
+# =============================================================================
+
+@api_bp.route('/api/professor/group/<int:group_id>/student/<int:am>/remove', methods=['DELETE'])
+@require_permission('registrations', 'manage')
+def api_force_remove_student(group_id, am):
+    """Professor/Admin: forcibly remove a student from a group and its lab."""
+    err = _check_group_ownership(group_id)
+    if err:
+        return err
+
+    group_enroll = RelGroupStudent.query.filter_by(am=am, group_id=group_id).first()
+    if not group_enroll:
+        return jsonify({'success': False, 'message': 'Student not in this group'}), 404
+
+    lab_rel = RelLabGroup.query.filter_by(group_id=group_id).first()
+    lab_id = lab_rel.lab_id if lab_rel else None
+
+    try:
+        db.session.delete(group_enroll)
+
+        if lab_id:
+            lab_enroll = RelLabStudent.query.filter_by(am=am, lab_id=lab_id).first()
+            if lab_enroll:
+                db.session.delete(lab_enroll)
+
+        absence = StudentMissesPerGroup.query.filter_by(am=am, group_id=group_id).first()
+        if absence:
+            db.session.delete(absence)
+
+        db.session.commit()
+
+        audit_log('student_force_removed',
+                  old_value=f"Student {am} in group {group_id}, lab {lab_id}",
+                  reason='Professor/Admin force-removed student')
+
+        return jsonify({'success': True, 'message': 'Student removed'})
+    except Exception:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'Remove failed'}), 500
+
+
+@api_bp.route('/api/professor/group/<int:group_id>/student/add', methods=['POST'])
+@require_permission('registrations', 'manage')
+def api_force_add_student(group_id):
+    """Professor/Admin: forcibly add a student to a group and its lab."""
+    err = _check_group_ownership(group_id)
+    if err:
+        return err
+
+    data = request.get_json()
+    if not data or not data.get('am'):
+        return jsonify({'success': False, 'message': 'AM is required'}), 400
+
+    try:
+        am = int(data['am'])
+    except (ValueError, TypeError):
+        return jsonify({'success': False, 'message': 'AM must be a number'}), 400
+
+    student = Student.query.get(am)
+    if not student:
+        return jsonify({'success': False, 'message': f'Student {am} not found'}), 404
+
+    if RelGroupStudent.query.filter_by(am=am, group_id=group_id).first():
+        return jsonify({'success': False, 'message': 'Student already in this group'}), 400
+
+    lab_rel = RelLabGroup.query.filter_by(group_id=group_id).first()
+    if not lab_rel:
+        return jsonify({'success': False, 'message': 'Group not linked to a lab'}), 400
+    lab_id = lab_rel.lab_id
+
+    now = datetime.now()
+    try:
+        # Add group enrollment
+        db.session.add(RelGroupStudent(
+            am=am,
+            group_id=group_id,
+            group_reg_daymonth=now.strftime('%d/%m'),
+            group_reg_year=now.year
+        ))
+
+        # Add lab enrollment if not already present
+        if not RelLabStudent.query.filter_by(am=am, lab_id=lab_id).first():
+            db.session.add(RelLabStudent(
+                am=am,
+                lab_id=lab_id,
+                misses=0,
+                grade=0,
+                reg_month=now.month,
+                reg_year=now.year,
+                status=STATUS_IN_PROGRESS
+            ))
+
+        db.session.commit()
+
+        audit_log('student_force_added',
+                  new_value=f"Student {am} added to group {group_id}, lab {lab_id}",
+                  reason='Professor/Admin force-added student')
+
+        return jsonify({
+            'success': True,
+            'message': f'Student {student.name} added',
+            'data': {
+                'am': student.am,
+                'name': student.name,
+                'email': student.email,
+                'semester': student.semester
+            }
+        }), 201
+    except Exception:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'Add failed'}), 500
 
 
 @api_bp.route('/api/labs/<int:lab_id>/description', methods=['PUT'])
@@ -1158,6 +1344,168 @@ def api_edit_professor_profile():
         'data': {'prof_id': professor.prof_id, 'name': professor.name,
                  'office': professor.office, 'tel': professor.tel}
     })
+
+
+# =============================================================================
+# ADMIN COURSE CRUD APIs
+# =============================================================================
+
+@api_bp.route('/api/admin/courses', methods=['POST'])
+@require_permission('registrations', 'manage')
+def api_admin_create_course():
+    """Admin-only: create a new course."""
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Admin only'}), 403
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'message': 'No data provided'}), 400
+
+    name = data.get('name', '').strip()
+    semester = data.get('semester', '').strip()
+
+    if not name:
+        return jsonify({'success': False, 'message': 'Course name is required'}), 400
+    if not semester:
+        return jsonify({'success': False, 'message': 'Semester is required'}), 400
+
+    new_course = Coursename(
+        name=name,
+        description='',
+        semester=semester
+    )
+    db.session.add(new_course)
+    db.session.commit()
+
+    audit_log('course_created',
+              new_value=f"course_id={new_course.course_id}, name={name}, semester={semester}",
+              reason='Admin created new course')
+
+    return jsonify({
+        'success': True,
+        'message': 'Course created',
+        'data': {
+            'course_id': new_course.course_id,
+            'name': new_course.name,
+            'semester': new_course.semester
+        }
+    }), 201
+
+
+@api_bp.route('/api/admin/courses/<int:course_id>', methods=['DELETE'])
+@require_permission('registrations', 'manage')
+def api_admin_delete_course(course_id):
+    """Admin-only: delete a course if no labs are linked to it."""
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Admin only'}), 403
+
+    course = Coursename.query.get(course_id)
+    if not course:
+        return jsonify({'success': False, 'message': 'Course not found'}), 404
+
+    lab_count = RelCourseLab.query.filter_by(course_id=course_id).count()
+    if lab_count > 0:
+        return jsonify({'success': False,
+                        'message': f'Cannot delete: course has {lab_count} lab(s). Remove them first.'}), 400
+
+    try:
+        CourseEligibility.query.filter_by(course_id=course_id).delete()
+        Coursetoprof.query.filter_by(course_id=course_id).delete()
+        db.session.delete(course)
+        db.session.commit()
+
+        audit_log('course_deleted',
+                  old_value=f"course_id={course_id}, name={course.name}",
+                  reason='Admin deleted course')
+
+        return jsonify({'success': True, 'message': 'Course deleted'})
+    except Exception:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'Delete failed'}), 500
+
+
+# =============================================================================
+# ADMIN PROFESSOR CRUD APIs
+# =============================================================================
+
+@api_bp.route('/api/admin/professors', methods=['POST'])
+@require_permission('registrations', 'manage')
+def api_admin_create_professor():
+    """Admin-only: create a new professor."""
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Admin only'}), 403
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'message': 'No data provided'}), 400
+
+    name = data.get('name', '').strip()
+    surname = data.get('surname', '').strip()
+    email = data.get('email', '').strip()
+    office = data.get('office', '').strip()
+    tel = data.get('tel', '').strip()
+
+    if not name or not surname:
+        return jsonify({'success': False, 'message': 'First name and last name are required'}), 400
+    if not email:
+        return jsonify({'success': False, 'message': 'Email is required'}), 400
+
+    full_name = surname + ' ' + name
+
+    new_prof = Professor(
+        name=full_name,
+        status='',
+        office=office or '',
+        email=email,
+        tel=tel or ''
+    )
+    db.session.add(new_prof)
+    db.session.commit()
+
+    audit_log('professor_created',
+              new_value=f"prof_id={new_prof.prof_id}, name={full_name}, email={email}",
+              reason='Admin created new professor')
+
+    return jsonify({
+        'success': True,
+        'message': 'Professor created',
+        'data': {
+            'prof_id': new_prof.prof_id,
+            'name': new_prof.name,
+            'email': new_prof.email
+        }
+    }), 201
+
+
+@api_bp.route('/api/admin/professors/<int:prof_id>', methods=['DELETE'])
+@require_permission('registrations', 'manage')
+def api_admin_delete_professor(prof_id):
+    """Admin-only: delete a professor if not assigned to any groups."""
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Admin only'}), 403
+
+    professor = Professor.query.get(prof_id)
+    if not professor:
+        return jsonify({'success': False, 'message': 'Professor not found'}), 404
+
+    group_count = RelGroupProf.query.filter_by(prof_id=prof_id).count()
+    if group_count > 0:
+        return jsonify({'success': False,
+                        'message': f'Cannot delete: professor is assigned to {group_count} group(s). Remove assignments first.'}), 400
+
+    try:
+        Coursetoprof.query.filter_by(prof_id=prof_id).delete()
+        db.session.delete(professor)
+        db.session.commit()
+
+        audit_log('professor_deleted',
+                  old_value=f"prof_id={prof_id}, name={professor.name}",
+                  reason='Admin deleted professor')
+
+        return jsonify({'success': True, 'message': 'Professor deleted'})
+    except Exception:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'Delete failed'}), 500
 
 
 # =============================================================================

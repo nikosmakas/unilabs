@@ -56,6 +56,9 @@
                     <button class="btn btn-sm btn-outline-primary" onclick="openEditGroupModal({{ group.group_id }})" title="Επεξεργασία">
                         <i class="fas fa-pencil-alt"></i>
                     </button>
+                    <button class="btn btn-sm btn-outline-danger ms-1" onclick="deleteGroup({{ group.group_id }})" title="Διαγραφή">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </td>
                 {% endif %}
             </tr>
@@ -136,6 +139,21 @@
 var currentGroupId = null;
 var isGroupCreateMode = false;
 var DAYS = ['Δευτέρα','Τρίτη','Τετάρτη','Πέμπτη','Παρασκευή','Σάββατο','Κυριακή'];
+
+function deleteGroup(groupId) {
+    if (!confirm('Διαγραφή τμήματος #' + groupId + ';\nΑυτή η ενέργεια δεν αναιρείται.')) return;
+    fetch('/api/admin/groups/' + groupId, { method: 'DELETE' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                alert('Το τμήμα διαγράφηκε.');
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(function() { alert('Σφάλμα διαγραφής.'); });
+}
 
 function openCreateGroupModal() {
     currentGroupId = null;

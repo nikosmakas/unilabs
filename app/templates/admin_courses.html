@@ -7,9 +7,14 @@
 {% endblock %}
 
 {% block content %}
-<h2 class="mb-4">
-    <i class="fas fa-user-shield me-2"></i>Διαχείριση Μαθημάτων — Δικαιούχοι Εγγραφής
-</h2>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="fas fa-user-shield me-2"></i>Διαχείριση Μαθημάτων — Δικαιούχοι Εγγραφής
+    </h2>
+    <button class="btn btn-success" onclick="openCreateCourseModal()">
+        <i class="fas fa-plus me-1"></i>Δημιουργία Μαθήματος
+    </button>
+</div>
 
 <p class="text-muted mb-4">
     Ανεβάστε αρχείο CSV με τα Α.Μ. των φοιτητών που έχουν δηλώσει κάθε θεωρητικό μάθημα.
@@ -54,12 +59,56 @@
                             <i class="fas fa-trash-alt"></i>
                         </button>
                         {% endif %}
+                        <button class="btn btn-sm btn-outline-danger delete-course-btn" onclick="deleteCourse({{ course.course_id }}, '{{ course.name }}')" title="Διαγραφή μαθήματος">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
                     </div>
                 </td>
             </tr>
         {% endfor %}
         </tbody>
     </table>
+</div>
+
+<!-- Create Course Modal -->
+<div class="modal fade" id="createCourseModal" tabindex="-1" aria-labelledby="createCourseModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="createCourseModalLabel">
+            <i class="fas fa-book me-2"></i>Νέο Μάθημα
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="newCourseName" class="form-label">Όνομα Μαθήματος</label>
+          <input type="text" class="form-control" id="newCourseName" placeholder="π.χ. Βάσεις Δεδομένων">
+        </div>
+        <div class="mb-3">
+          <label for="newCourseSemester" class="form-label">Εξάμηνο</label>
+          <select class="form-select" id="newCourseSemester">
+            <option value="">-- Επιλέξτε εξάμηνο --</option>
+            <option value="1ο Εξάμηνο">1ο Εξάμηνο</option>
+            <option value="2ο Εξάμηνο">2ο Εξάμηνο</option>
+            <option value="3ο Εξάμηνο">3ο Εξάμηνο</option>
+            <option value="4ο Εξάμηνο">4ο Εξάμηνο</option>
+            <option value="5ο Εξάμηνο">5ο Εξάμηνο</option>
+            <option value="6ο Εξάμηνο">6ο Εξάμηνο</option>
+            <option value="7ο Εξάμηνο">7ο Εξάμηνο</option>
+            <option value="8ο Εξάμηνο">8ο Εξάμηνο</option>
+          </select>
+        </div>
+        <div id="createCourseAlert"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Άκυρο</button>
+        <button type="button" class="btn btn-primary" onclick="saveCourse()">
+            <i class="fas fa-plus me-1"></i>Δημιουργία
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
@@ -139,5 +188,55 @@
     document.querySelectorAll('.clear-btn').forEach(btn => {
         btn.addEventListener('click', handleClear);
     });
+
+    function openCreateCourseModal() {
+        document.getElementById('newCourseName').value = '';
+        document.getElementById('newCourseSemester').value = '';
+        document.getElementById('createCourseAlert').innerHTML = '';
+        new bootstrap.Modal(document.getElementById('createCourseModal')).show();
+    }
+
+    function saveCourse() {
+        const name = document.getElementById('newCourseName').value.trim();
+        const semester = document.getElementById('newCourseSemester').value;
+        const alertBox = document.getElementById('createCourseAlert');
+
+        if (!name) { alertBox.innerHTML = '<div class="alert alert-warning">Εισάγετε όνομα μαθήματος.</div>'; return; }
+        if (!semester) { alertBox.innerHTML = '<div class="alert alert-warning">Επιλέξτε εξάμηνο.</div>'; return; }
+
+        fetch('/api/admin/courses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name, semester: semester })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alertBox.innerHTML = '<div class="alert alert-success">Το μάθημα δημιουργήθηκε (ID: ' + data.data.course_id + ').</div>';
+                setTimeout(() => location.reload(), 1200);
+            } else {
+                alertBox.innerHTML = '<div class="alert alert-danger">' + data.message + '</div>';
+            }
+        })
+        .catch(() => {
+            alertBox.innerHTML = '<div class="alert alert-danger">Σφάλμα δημιουργίας.</div>';
+        });
+    }
+
+    function deleteCourse(courseId, courseName) {
+        if (!confirm('Διαγραφή μαθήματος "' + courseName + '";\nΑυτή η ενέργεια δεν αναιρείται.')) return;
+        fetch('/api/admin/courses/' + courseId, { method: 'DELETE' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('adminAlert', 'success', 'Το μάθημα διαγράφηκε.');
+                    const row = document.getElementById('course-row-' + courseId);
+                    if (row) row.remove();
+                } else {
+                    showAlert('adminAlert', 'danger', data.message);
+                }
+            })
+            .catch(() => showAlert('adminAlert', 'danger', 'Σφάλμα διαγραφής.'));
+    }
 </script>
 {% endblock %}
