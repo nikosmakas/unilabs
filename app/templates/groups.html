@@ -1,17 +1,17 @@
 ﻿{% extends "base.html" %}
 
-{% block title %}Τμήματα{% endblock %}
+{% block title %}{{ _('Τμήματα') }}{% endblock %}
 
 {% block breadcrumb %}
-<li class="breadcrumb-item active" aria-current="page">Τμήματα</li>
+<li class="breadcrumb-item active" aria-current="page">{{ _('Τμήματα') }}</li>
 {% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0"><i class="fas fa-users me-2"></i>Τμήματα</h2>
+    <h2 class="mb-0"><i class="fas fa-users me-2"></i>{{ _('Τμήματα') }}</h2>
     {% if role == 'admin' %}
     <button class="btn btn-success" onclick="openCreateGroupModal()">
-        <i class="fas fa-plus me-1"></i>Δημιουργία Τμήματος
+        <i class="fas fa-plus me-1"></i>{{ _('Δημιουργία Τμήματος') }}
     </button>
     {% endif %}
 </div>
@@ -20,13 +20,13 @@
         <thead class="table-dark">
             <tr>
                 <th>ID</th>
-                <th>Εργαστήριο</th>
-                <th>Ώρα/Μέρα</th>
-                <th>Έτος</th>
-                <th>Πληρότητα</th>
-                <th>Διαθέσιμες Θέσεις</th>
+                <th>{{ _('Εργαστήριο') }}</th>
+                <th>{{ _('Ώρα/Μέρα') }}</th>
+                <th>{{ _('Έτος') }}</th>
+                <th>{{ _('Πληρότητα') }}</th>
+                <th>{{ _('Διαθέσιμες Θέσεις') }}</th>
                 {% if role == 'admin' %}
-                <th>Ενέργειες</th>
+                <th>{{ _('Ενέργειες') }}</th>
                 {% endif %}
             </tr>
         </thead>
@@ -46,17 +46,17 @@
                 </td>
                 <td>
                     {% if group.is_full %}
-                    <span class="badge bg-danger">Πλήρες</span>
+                    <span class="badge bg-danger">{{ _('Πλήρες') }}</span>
                     {% else %}
                     <span class="badge bg-success">{{ group.available_spots }}</span>
                     {% endif %}
                 </td>
                 {% if role == 'admin' %}
                 <td>
-                    <button class="btn btn-sm btn-outline-primary" onclick="openEditGroupModal({{ group.group_id }})" title="Επεξεργασία">
+                    <button class="btn btn-sm btn-outline-primary" onclick="openEditGroupModal({{ group.group_id }})" title="{{ _('Επεξεργασία') }}" aria-label="{{ _('Edit group') }}">
                         <i class="fas fa-pencil-alt"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-danger ms-1" onclick="deleteGroup({{ group.group_id }})" title="Διαγραφή">
+                    <button class="btn btn-sm btn-outline-danger ms-1" onclick="deleteGroup({{ group.group_id }})" title="{{ _('Διαγραφή') }}" aria-label="{{ _('Delete group') }}">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -69,7 +69,7 @@
 
 {% if role == 'admin' %}
 <!-- Group Admin Modal -->
-<div class="modal fade" id="groupAdminModal" tabindex="-1" aria-labelledby="groupAdminModalLabel" aria-hidden="true">
+<div class="modal fade" id="groupAdminModal" tabindex="-1" aria-labelledby="groupAdminModalLabel" aria-hidden="true" aria-modal="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header bg-primary text-white">
@@ -84,18 +84,18 @@
         </div>
         <div id="groupModalContent">
           <div class="mb-3" id="groupLabSelectWrap">
-            <label for="groupLabSelect" class="form-label">Εργαστήριο</label>
+            <label for="groupLabSelect" class="form-label">{{ _('Εργαστήριο') }}</label>
             <select class="form-select" id="groupLabSelect">
-              <option value="">-- Επιλέξτε εργαστήριο --</option>
+              <option value="">-- {{ _('Επιλέξτε εργαστήριο') }} --</option>
               {% for lab in all_labs %}
               <option value="{{ lab.lab_id }}">{{ lab.name }}</option>
               {% endfor %}
             </select>
           </div>
           <div class="mb-3">
-            <label for="groupDaySelect" class="form-label">Ημέρα</label>
+            <label for="groupDaySelect" class="form-label">{{ _('Ημέρα') }}</label>
             <select class="form-select" id="groupDaySelect">
-              <option value="">-- Επιλέξτε ημέρα --</option>
+              <option value="">-- {{ _('Επιλέξτε ημέρα') }} --</option>
               <option value="Δευτέρα">Δευτέρα</option>
               <option value="Τρίτη">Τρίτη</option>
               <option value="Τετάρτη">Τετάρτη</option>
@@ -106,13 +106,13 @@
             </select>
           </div>
           <div class="mb-3">
-            <label for="groupTimeInput" class="form-label">Ώρα (π.χ. 10:00 - 12:00)</label>
+            <label for="groupTimeInput" class="form-label">{{ _('Ώρα') }} (π.χ. 10:00 - 12:00)</label>
             <input type="text" class="form-control" id="groupTimeInput" placeholder="10:00 - 12:00">
           </div>
           <div class="mb-3">
-            <label for="groupProfSelect" class="form-label">Υπεύθυνος Καθηγητής</label>
+            <label for="groupProfSelect" class="form-label">{{ _('Υπεύθυνος Καθηγητής') }}</label>
             <select class="form-select" id="groupProfSelect">
-              <option value="">-- Χωρίς ανάθεση --</option>
+              <option value="">-- {{ _('Χωρίς ανάθεση') }} --</option>
               {% for prof in professors %}
               <option value="{{ prof.prof_id }}">{{ prof.name }}</option>
               {% endfor %}
@@ -122,9 +122,9 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Άκυρο</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ _('Άκυρο') }}</button>
         <button type="button" class="btn btn-primary" id="groupSaveBtn" onclick="saveGroupAdmin()">
-            <i class="fas fa-save me-1"></i>Αποθήκευση
+            <i class="fas fa-save me-1"></i>{{ _('Αποθήκευση') }}
         </button>
       </div>
     </div>

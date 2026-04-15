@@ -1,17 +1,17 @@
 ﻿{% extends "base.html" %}
 
-{% block title %}Υπεύθυνοι Εργαστηρίων{% endblock %}
+{% block title %}{{ _('Υπεύθυνοι Εργαστηρίων') }}{% endblock %}
 
 {% block breadcrumb %}
-<li class="breadcrumb-item active" aria-current="page">Υπεύθυνοι</li>
+<li class="breadcrumb-item active" aria-current="page">{{ _('Υπεύθυνοι') }}</li>
 {% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0"><i class="fas fa-user-tie me-2"></i>Υπεύθυνοι Εργαστηρίων</h2>
+    <h2 class="mb-0"><i class="fas fa-user-tie me-2"></i>{{ _('Υπεύθυνοι Εργαστηρίων') }}</h2>
     {% if role == 'admin' %}
     <button class="btn btn-success" onclick="openCreateProfModal()">
-        <i class="fas fa-plus me-1"></i>Προσθήκη Καθηγητή
+        <i class="fas fa-plus me-1"></i>{{ _('Προσθήκη Καθηγητή') }}
     </button>
     {% endif %}
 </div>
@@ -29,11 +29,11 @@
                 </p>
                 {% if role == 'admin' or (role == 'professor' and session.get('schGrAcPersonID')|string == prof.prof_id|string) %}
                 <button class="btn btn-sm btn-outline-primary" onclick="openEditModal({{ prof.prof_id }}, '{{ prof.office }}', '{{ prof.tel }}')">
-                    <i class="fas fa-edit me-1"></i>Επεξεργασία
+                    <i class="fas fa-edit me-1"></i>{{ _('Επεξεργασία') }}
                 </button>
                 {% endif %}
                 {% if role == 'admin' %}
-                <button class="btn btn-sm btn-outline-danger ms-1" onclick="deleteProfessor({{ prof.prof_id }}, '{{ prof.name }}')">
+                <button class="btn btn-sm btn-outline-danger ms-1" onclick="deleteProfessor({{ prof.prof_id }}, '{{ prof.name }}')" aria-label="{{ _('Delete professor') }}">
                     <i class="fas fa-trash"></i>
                 </button>
                 {% endif %}
@@ -45,28 +45,28 @@
 
 {% if role == 'admin' or role == 'professor' %}
 <!-- Edit Professor Modal -->
-<div class="modal fade" id="editProfModal" tabindex="-1" aria-labelledby="editProfModalLabel" aria-hidden="true">
+<div class="modal fade" id="editProfModal" tabindex="-1" aria-labelledby="editProfModalLabel" aria-hidden="true" aria-modal="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="editProfModalLabel">Επεξεργασία Καθηγητή</h5>
+        <h5 class="modal-title" id="editProfModalLabel">{{ _('Επεξεργασία Καθηγητή') }}</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="editProfId">
         <div class="mb-3">
-          <label for="editProfOffice" class="form-label">Γραφείο</label>
+          <label for="editProfOffice" class="form-label">{{ _('Γραφείο') }}</label>
           <input type="text" class="form-control" id="editProfOffice">
         </div>
         <div class="mb-3">
-          <label for="editProfTel" class="form-label">Τηλέφωνο</label>
+          <label for="editProfTel" class="form-label">{{ _('Τηλέφωνο') }}</label>
           <input type="text" class="form-control" id="editProfTel">
         </div>
         <div id="editProfAlert"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Άκυρο</button>
-        <button type="button" class="btn btn-primary" onclick="submitProfEdit()">Αποθήκευση</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ _('Άκυρο') }}</button>
+        <button type="button" class="btn btn-primary" onclick="submitProfEdit()">{{ _('Αποθήκευση') }}</button>
       </div>
     </div>
   </div>
@@ -75,23 +75,23 @@
 
 {% if role == 'admin' %}
 <!-- Create Professor Modal -->
-<div class="modal fade" id="createProfModal" tabindex="-1" aria-labelledby="createProfModalLabel" aria-hidden="true">
+<div class="modal fade" id="createProfModal" tabindex="-1" aria-labelledby="createProfModalLabel" aria-hidden="true" aria-modal="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header bg-primary text-white">
         <h5 class="modal-title" id="createProfModalLabel">
-            <i class="fas fa-user-plus me-2"></i>Νέος Καθηγητής
+            <i class="fas fa-user-plus me-2"></i>{{ _('Νέος Καθηγητής') }}
         </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         <div class="row g-2 mb-3">
           <div class="col-md-6">
-            <label for="newProfSurname" class="form-label">Επώνυμο</label>
+            <label for="newProfSurname" class="form-label">{{ _('Επώνυμο') }}</label>
             <input type="text" class="form-control" id="newProfSurname" placeholder="π.χ. Παπαδόπουλος">
           </div>
           <div class="col-md-6">
-            <label for="newProfName" class="form-label">Όνομα</label>
+            <label for="newProfName" class="form-label">{{ _('Όνομα') }}</label>
             <input type="text" class="form-control" id="newProfName" placeholder="π.χ. Νίκος">
           </div>
         </div>
@@ -101,20 +101,20 @@
         </div>
         <div class="row g-2 mb-3">
           <div class="col-md-6">
-            <label for="newProfOffice" class="form-label">Γραφείο</label>
+            <label for="newProfOffice" class="form-label">{{ _('Γραφείο') }}</label>
             <input type="text" class="form-control" id="newProfOffice" placeholder="π.χ. Α305">
           </div>
           <div class="col-md-6">
-            <label for="newProfTel" class="form-label">Τηλέφωνο</label>
+            <label for="newProfTel" class="form-label">{{ _('Τηλέφωνο') }}</label>
             <input type="text" class="form-control" id="newProfTel" placeholder="π.χ. 26510-12345">
           </div>
         </div>
         <div id="createProfAlert"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Άκυρο</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ _('Άκυρο') }}</button>
         <button type="button" class="btn btn-primary" onclick="saveProfessor()">
-            <i class="fas fa-plus me-1"></i>Δημιουργία
+            <i class="fas fa-plus me-1"></i>{{ _('Δημιουργία') }}
         </button>
       </div>
     </div>

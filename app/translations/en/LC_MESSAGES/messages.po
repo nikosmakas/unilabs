@@ -1,0 +1,395 @@
+# English translations for UniLabs.
+# Copyright (C) 2024 UniLabs
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: UniLabs 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-01-01 00:00+0000\n"
+"PO-Revision-Date: 2024-01-01 00:00+0000\n"
+"Last-Translator: UniLabs Dev Team\n"
+"Language: en\n"
+"Language-Team: en <en@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel\n"
+
+msgid "Σύστημα Διαχείρισης Εργαστηρίων"
+msgstr "Laboratory Management System"
+
+msgid "Toggle navigation"
+msgstr "Toggle navigation"
+
+msgid "Toggle Dark Mode"
+msgstr "Toggle Dark Mode"
+
+msgid "Language switcher"
+msgstr "Language switcher"
+
+msgid "Σύστημα Εργαστηρίων"
+msgstr "Lab System"
+
+msgid "Συνδεδεμένος:"
+msgstr "Logged in:"
+
+msgid "Φοιτητής"
+msgstr "Student"
+
+msgid "Καθηγητής"
+msgstr "Professor"
+
+msgid "Διαχειριστής"
+msgstr "Administrator"
+
+msgid "Επισκέπτης"
+msgstr "Guest"
+
+msgid "Αποσύνδεση"
+msgstr "Logout"
+
+msgid "Σύνδεση"
+msgstr "Login"
+
+msgid "Main navigation"
+msgstr "Main navigation"
+
+msgid "Αρχική"
+msgstr "Home"
+
+msgid "Εγγραφή σε Εργαστήριο"
+msgstr "Lab Registration"
+
+msgid "Οι Εγγραφές μου"
+msgstr "My Enrollments"
+
+msgid "Εργαστήρια"
+msgstr "Labs"
+
+msgid "Τμήματα"
+msgstr "Groups"
+
+msgid "Φοιτητές"
+msgstr "Students"
+
+msgid "Τα Τμήματά μου"
+msgstr "My Groups"
+
+msgid "Υπεύθυνοι"
+msgstr "Professors"
+
+msgid "Εγγραφές"
+msgstr "Registrations"
+
+msgid "Απουσίες"
+msgstr "Absences"
+
+msgid "Διαχείριση Μαθημάτων"
+msgstr "Course Management"
+
+msgid "Export CSV"
+msgstr "Export CSV"
+
+msgid "Delete lab"
+msgstr "Delete lab"
+
+msgid "Δημιουργία Εργαστηρίου"
+msgstr "Create Lab"
+
+msgid "Όνομα"
+msgstr "Name"
+
+msgid "Περιγραφή"
+msgstr "Description"
+
+msgid "Μέγ. Φοιτητές"
+msgstr "Max Students"
+
+msgid "Όριο Εγγραφών"
+msgstr "Registration Deadline"
+
+msgid "Ενέργειες"
+msgstr "Actions"
+
+msgid "Μάθημα"
+msgstr "Course"
+
+msgid "Μέγ. Απουσίες"
+msgstr "Max Absences"
+
+msgid "Αποθήκευση Περιγραφής"
+msgstr "Save Description"
+
+msgid "Διαχείριση Εργαστηρίου"
+msgstr "Lab Management"
+
+msgid "Όνομα Εργαστηρίου"
+msgstr "Lab Name"
+
+msgid "Λήξη Εγγραφών"
+msgstr "Registration Deadline"
+
+msgid "Εξαγωγή CSV"
+msgstr "Export CSV"
+
+msgid "Διαγραφή"
+msgstr "Delete"
+
+msgid "Αποθήκευση Στοιχείων"
+msgstr "Save Details"
+
+msgid "Επιλέξτε μάθημα"
+msgstr "Select course"
+
+msgid "Edit group"
+msgstr "Edit group"
+
+msgid "Delete group"
+msgstr "Delete group"
+
+msgid "Δημιουργία Τμήματος"
+msgstr "Create Group"
+
+msgid "Εργαστήριο"
+msgstr "Lab"
+
+msgid "Ώρα/Μέρα"
+msgstr "Time/Day"
+
+msgid "Έτος"
+msgstr "Year"
+
+msgid "Πληρότητα"
+msgstr "Occupancy"
+
+msgid "Διαθέσιμες Θέσεις"
+msgstr "Available Spots"
+
+msgid "Πλήρες"
+msgstr "Full"
+
+msgid "Ημέρα"
+msgstr "Day"
+
+msgid "Ώρα"
+msgstr "Time"
+
+msgid "Υπεύθυνος Καθηγητής"
+msgstr "Assigned Professor"
+
+msgid "Άκυρο"
+msgstr "Cancel"
+
+msgid "Αποθήκευση"
+msgstr "Save"
+
+msgid "Επεξεργασία"
+msgstr "Edit"
+
+msgid "Επιλέξτε εργαστήριο"
+msgstr "Select lab"
+
+msgid "Επιλέξτε ημέρα"
+msgstr "Select day"
+
+msgid "Χωρίς ανάθεση"
+msgstr "No assignment"
+
+msgid "Clear eligibility list"
+msgstr "Clear eligibility list"
+
+msgid "Delete course"
+msgstr "Delete course"
+
+msgid "Δημιουργία Μαθήματος"
+msgstr "Create Course"
+
+msgid "Εξάμηνο"
+msgstr "Semester"
+
+msgid "Δικαιούχοι"
+msgstr "Eligible"
+
+msgid "Όνομα Μαθήματος"
+msgstr "Course Name"
+
+msgid "Δημιουργία"
+msgstr "Create"
+
+msgid "Δικαιούχοι Εγγραφής"
+msgstr "Registration Eligible"
+
+msgid "Χωρίς λίστα"
+msgstr "No list"
+
+msgid "Ανέβασμα"
+msgstr "Upload"
+
+msgid "Διαγραφή λίστας"
+msgstr "Clear list"
+
+msgid "Διαγραφή μαθήματος"
+msgstr "Delete course"
+
+msgid "Νέο Μάθημα"
+msgstr "New Course"
+
+msgid "Επιλέξτε εξάμηνο"
+msgstr "Select semester"
+
+msgid "Ανεβάστε αρχείο CSV με τα Α.Μ. των φοιτητών που έχουν δηλώσει κάθε θεωρητικό μάθημα. Μόνο αυτοί θα μπορούν να εγγραφούν στα αντίστοιχα εργαστήρια. Αν δεν υπάρχει λίστα, η εγγραφή είναι ελεύθερη για όλους."
+msgstr "Upload a CSV file with the student registration numbers who have enrolled in each theory course. Only they will be able to register for the corresponding labs. If no list exists, registration is open to all."
+
+msgid "Delete professor"
+msgstr "Delete professor"
+
+msgid "Υπεύθυνοι Εργαστηρίων"
+msgstr "Lab Supervisors"
+
+msgid "Προσθήκη Καθηγητή"
+msgstr "Add Professor"
+
+msgid "Επεξεργασία Καθηγητή"
+msgstr "Edit Professor"
+
+msgid "Γραφείο"
+msgstr "Office"
+
+msgid "Τηλέφωνο"
+msgstr "Phone"
+
+msgid "Νέος Καθηγητής"
+msgstr "New Professor"
+
+msgid "Επώνυμο"
+msgstr "Surname"
+
+msgid "Close"
+msgstr "Close"
+
+msgid "Add student"
+msgstr "Add student"
+
+msgid "Φοιτητές Τμήματος"
+msgstr "Group Students"
+
+msgid "Προσθήκη"
+msgstr "Add"
+
+msgid "Α.Μ."
+msgstr "Reg. No."
+
+msgid "Ονοματεπώνυμο"
+msgstr "Full Name"
+
+msgid "Βαθμός"
+msgstr "Grade"
+
+msgid "Κατάσταση"
+msgstr "Status"
+
+msgid "Φόρτωση..."
+msgstr "Loading..."
+
+msgid "Δεν υπάρχουν εγγεγραμμένοι φοιτητές σε αυτό το τμήμα."
+msgstr "No students enrolled in this group."
+
+msgid "Α.Μ. Φοιτής"
+msgstr "Student Reg. No."
+
+msgid "Φόρμα Εγγραφής"
+msgstr "Registration Form"
+
+msgid "Τμήμα"
+msgstr "Group"
+
+msgid "Πληρότητα Τμήματος"
+msgstr "Group Occupancy"
+
+msgid "Υπεύθυνος Τμήματος"
+msgstr "Group Supervisor"
+
+msgid "Αλλαγή Τμήματος"
+msgstr "Change Group"
+
+msgid "Απεγγραφή"
+msgstr "Unenroll"
+
+msgid "Προβολή"
+msgstr "View"
+
+msgid "διαθέσιμα εργαστήρια"
+msgstr "available labs"
+
+msgid "ενεργά τμήματα"
+msgstr "active groups"
+
+msgid "καθηγητές"
+msgstr "professors"
+
+msgid "Γρήγορη Εγγραφή"
+msgstr "Quick Registration"
+
+msgid "Εγγραφείτε σε νέο εργαστήριο επιλέγοντας εξάμηνο, μάθημα και τμήμα."
+msgstr "Register for a new lab by selecting semester, course, and group."
+
+msgid "Εγγραφή τώρα"
+msgstr "Register now"
+
+msgid "Δείτε τις τρέχουσες εγγραφές σας και τις απουσίες."
+msgstr "View your current enrollments and absences."
+
+msgid "Α.Μ. Φοιτητή"
+msgstr "Student Reg. No."
+
+msgid "Ημερομηνίες Απουσιών"
+msgstr "Absence Dates"
+
+msgid "Η σελίδα δεν βρέθηκε"
+msgstr "Page not found"
+
+msgid "Η σελίδα που ψάχνετε δεν υπάρχει ή έχει μετακινηθεί."
+msgstr "The page you are looking for does not exist or has been moved."
+
+msgid "Επιστροφή στην Αρχική"
+msgstr "Return to Home"
+
+msgid "Σε Εξέλιξη"
+msgstr "In Progress"
+
+msgid "Ολοκληρωμένο"
+msgstr "Completed"
+
+msgid "Αποτυχία"
+msgstr "Failed"
+
+msgid "Δευτέρα"
+msgstr "Monday"
+
+msgid "Τρίτη"
+msgstr "Tuesday"
+
+msgid "Τετάρτη"
+msgstr "Wednesday"
+
+msgid "Πέμπτη"
+msgstr "Thursday"
+
+msgid "Παρασκευή"
+msgstr "Friday"
+
+msgid "Σάββατο"
+msgstr "Saturday"
+
+msgid "Κυριακή"
+msgstr "Sunday"
+
+msgid "Η απεγγραφή ολοκληρώθηκε επιτυχώς."
+msgstr "Unenrollment completed successfully."
+
+msgid "Σφάλμα κατά την απεγγραφή"
+msgstr "Error during unenrollment"
+
+msgid "Δεν έχετε δικαίωμα εγγραφής. Δεν βρέθηκε δήλωση του θεωρητικού μαθήματος."
+msgstr "You are not eligible for registration. No theory course enrollment found."
+

@@ -1,4 +1,5 @@
 from flask import Blueprint, request, session, jsonify, Response
+from flask_babel import _
 from datetime import datetime
 import csv
 import io
@@ -35,7 +36,7 @@ def _check_eligibility(student_am, lab_id):
     # Records exist – student must be on the list
     if CourseEligibility.query.filter_by(course_id=course_id, am=int(student_am)).first():
         return True, ''
-    return False, '\u0394\u03b5\u03bd \u03ad\u03c7\u03b5\u03c4\u03b5 \u03b4\u03b9\u03ba\u03b1\u03af\u03c9\u03bc\u03b1 \u03b5\u03b3\u03b3\u03c1\u03b1\u03c6\u03ae\u03c2. \u0394\u03b5\u03bd \u03b2\u03c1\u03ad\u03b8\u03b7\u03ba\u03b5 \u03b4\u03ae\u03bb\u03c9\u03c3\u03b7 \u03c4\u03bf\u03c5 \u03b8\u03b5\u03c9\u03c1\u03b7\u03c4\u03b9\u03ba\u03bf\u03cd \u03bc\u03b1\u03b8\u03ae\u03bc\u03b1\u03c4\u03bf\u03c2.'
+    return False, _('\u0394\u03b5\u03bd \u03ad\u03c7\u03b5\u03c4\u03b5 \u03b4\u03b9\u03ba\u03b1\u03af\u03c9\u03bc\u03b1 \u03b5\u03b3\u03b3\u03c1\u03b1\u03c6\u03ae\u03c2. \u0394\u03b5\u03bd \u03b2\u03c1\u03ad\u03b8\u03b7\u03ba\u03b5 \u03b4\u03ae\u03bb\u03c9\u03c3\u03b7 \u03c4\u03bf\u03c5 \u03b8\u03b5\u03c9\u03c1\u03b7\u03c4\u03b9\u03ba\u03bf\u03cd \u03bc\u03b1\u03b8\u03ae\u03bc\u03b1\u03c4\u03bf\u03c2.')
 
 
 # =============================================================================
@@ -597,13 +598,13 @@ def api_unenroll_lab(lab_id):
         db.session.delete(lab_enrollment)
 
         db.session.commit()
-        return jsonify({'success': True, 'message': 'Η απεγγραφή ολοκληρώθηκε επιτυχώς.'}), 200
+        return jsonify({'success': True, 'message': _('Η απεγγραφή ολοκληρώθηκε επιτυχώς.')}), 200
 
     except Exception as e:
         db.session.rollback()
         import logging
         logging.getLogger(__name__).error(f'Unenroll failed: {e}')
-        return jsonify({'success': False, 'message': 'Σφάλμα κατά την απεγγραφή'}), 500
+        return jsonify({'success': False, 'message': _('Σφάλμα κατά την απεγγραφή')}), 500
 
 
 # =============================================================================

@@ -1,17 +1,17 @@
 ﻿{% extends "base.html" %}
 
-{% block title %}Εργαστήρια{% endblock %}
+{% block title %}{{ _('Εργαστήρια') }}{% endblock %}
 
 {% block breadcrumb %}
-<li class="breadcrumb-item active" aria-current="page">Εργαστήρια</li>
+<li class="breadcrumb-item active" aria-current="page">{{ _('Εργαστήρια') }}</li>
 {% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0"><i class="fas fa-flask me-2"></i>Εργαστήρια</h2>
+    <h2 class="mb-0"><i class="fas fa-flask me-2"></i>{{ _('Εργαστήρια') }}</h2>
     {% if role == 'admin' %}
     <button class="btn btn-success" onclick="openCreateLabModal()">
-        <i class="fas fa-plus me-1"></i>Δημιουργία Εργαστηρίου
+        <i class="fas fa-plus me-1"></i>{{ _('Δημιουργία Εργαστηρίου') }}
     </button>
     {% endif %}
 </div>
@@ -20,12 +20,12 @@
         <thead class="table-dark">
             <tr>
                 <th>ID</th>
-                <th>Όνομα</th>
-                <th>Περιγραφή</th>
-                <th>Μέγ. Φοιτητές</th>
-                <th>Όριο Εγγραφών</th>
+                <th>{{ _('Όνομα') }}</th>
+                <th>{{ _('Περιγραφή') }}</th>
+                <th>{{ _('Μέγ. Φοιτητές') }}</th>
+                <th>{{ _('Όριο Εγγραφών') }}</th>
                 {% if role == 'admin' %}
-                <th>Ενέργειες</th>
+                <th>{{ _('Ενέργειες') }}</th>
                 {% endif %}
             </tr>
         </thead>
@@ -43,10 +43,10 @@
                 <td>{{ lab.reg_limit }}</td>
                 {% if role == 'admin' %}
                 <td>
-                    <a href="/api/admin/lab/{{ lab.lab_id }}/export" class="btn btn-sm btn-outline-primary" download title="Εξαγωγή CSV">
+                    <a href="/api/admin/lab/{{ lab.lab_id }}/export" class="btn btn-sm btn-outline-primary" download title="{{ _('Εξαγωγή CSV') }}" aria-label="{{ _('Export CSV') }}">
                         <i class="fas fa-file-csv"></i>
                     </a>
-                    <button class="btn btn-sm btn-outline-danger ms-1" onclick="deleteLab({{ lab.lab_id }}, '{{ lab.name }}')" title="Διαγραφή">
+                    <button class="btn btn-sm btn-outline-danger ms-1" onclick="deleteLab({{ lab.lab_id }}, '{{ lab.name }}')" title="{{ _('Διαγραφή') }}" aria-label="{{ _('Delete lab') }}">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -57,7 +57,7 @@
     </table>
 </div>
 
-<div class="modal fade" id="labDetailsModal" tabindex="-1" aria-labelledby="labDetailsModalLabel" aria-hidden="true">
+<div class="modal fade" id="labDetailsModal" tabindex="-1" aria-labelledby="labDetailsModalLabel" aria-hidden="true" aria-modal="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header bg-primary text-white">
@@ -73,40 +73,40 @@
         <div id="labModalContent" class="d-none">
           <div id="labReadOnlySection">
             <div class="mb-3">
-              <strong>Μάθημα:</strong> <span id="modalCourseName" class="text-muted">-</span>
+               <strong>{{ _('Μάθημα') }}:</strong> <span id="modalCourseName" class="text-muted">-</span>
             </div>
             <div class="mb-3">
-              <strong>Μέγ. Φοιτητές:</strong> <span id="modalMaxUsers"></span>
-              <strong class="ms-3">Όριο Εγγραφών:</strong> <span id="modalRegLimit"></span>
-              <strong class="ms-3">Μέγ. Απουσίες:</strong> <span id="modalMaxMisses"></span>
+              <strong>{{ _('Μέγ. Φοιτητές') }}:</strong> <span id="modalMaxUsers"></span>
+              <strong class="ms-3">{{ _('Όριο Εγγραφών') }}:</strong> <span id="modalRegLimit"></span>
+              <strong class="ms-3">{{ _('Μέγ. Απουσίες') }}:</strong> <span id="modalMaxMisses"></span>
             </div>
             <div class="mb-3">
-              <strong>Υπεύθυνοι:</strong>
+              <strong>{{ _('Υπεύθυνοι') }}:</strong>
               <div id="modalProfessors" class="mt-1"></div>
             </div>
             <hr>
           </div>
           <div id="descriptionSection">
-            <label for="modalDescription" class="form-label fw-bold">Περιγραφή</label>
+            <label for="modalDescription" class="form-label fw-bold">{{ _('Περιγραφή') }}</label>
             <textarea class="form-control" id="modalDescription" rows="3" readonly></textarea>
             <div id="descriptionEditControls" class="d-none mt-2">
               <button class="btn btn-sm btn-success" onclick="saveDescription()">
-                  <i class="fas fa-save me-1"></i>Αποθήκευση Περιγραφής
+                  <i class="fas fa-save me-1"></i>{{ _('Αποθήκευση Περιγραφής') }}
               </button>
             </div>
           </div>
           {% if role == 'admin' %}
           <hr>
-          <h6 class="text-danger"><i class="fas fa-user-shield me-1"></i>Διαχείριση Εργαστηρίου</h6>
+          <h6 class="text-danger"><i class="fas fa-user-shield me-1"></i>{{ _('Διαχείριση Εργαστηρίου') }}</h6>
           <div class="row g-2 mb-2">
             <div class="col-md-6">
-              <label for="adminLabName" class="form-label">Όνομα Εργαστηρίου</label>
+              <label for="adminLabName" class="form-label">{{ _('Όνομα Εργαστηρίου') }}</label>
               <input type="text" class="form-control" id="adminLabName">
             </div>
             <div class="col-md-6">
-              <label for="adminLabCourse" class="form-label">Μάθημα</label>
+              <label for="adminLabCourse" class="form-label">{{ _('Μάθημα') }}</label>
               <select class="form-select" id="adminLabCourse">
-                <option value="">-- Επιλέξτε μάθημα --</option>
+                <option value="">-- {{ _('Επιλέξτε μάθημα') }} --</option>
                 {% for c in courses %}
                 <option value="{{ c.course_id }}">{{ c.name }} (Εξ. {{ c.semester }})</option>
                 {% endfor %}
@@ -115,20 +115,20 @@
           </div>
           <div class="row g-2 mb-3">
             <div class="col-md-4">
-              <label for="adminMaxUsers" class="form-label">Μέγ. Φοιτητές</label>
+              <label for="adminMaxUsers" class="form-label">{{ _('Μέγ. Φοιτητές') }}</label>
               <input type="number" class="form-control" id="adminMaxUsers" min="1">
             </div>
             <div class="col-md-4">
-              <label for="adminDateEnd" class="form-label">Λήξη Εγγραφών</label>
+              <label for="adminDateEnd" class="form-label">{{ _('Λήξη Εγγραφών') }}</label>
               <input type="date" class="form-control" id="adminDateEnd">
             </div>
             <div class="col-md-4">
-              <label for="adminMaxMisses" class="form-label">Μέγ. Απουσίες</label>
+              <label for="adminMaxMisses" class="form-label">{{ _('Μέγ. Απουσίες') }}</label>
               <input type="number" class="form-control" id="adminMaxMisses" min="0">
             </div>
           </div>
           <button class="btn btn-sm btn-danger" id="adminSaveBtn" onclick="saveLabAdmin()">
-              <i class="fas fa-save me-1"></i>Αποθήκευση Στοιχείων
+              <i class="fas fa-save me-1"></i>{{ _('Αποθήκευση Στοιχείων') }}
           </button>
           {% endif %}
           <div id="labModalAlert" class="mt-3"></div>

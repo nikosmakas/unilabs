@@ -1,21 +1,21 @@
 ﻿{% extends "base.html" %}
 
-{% block title %}Απουσίες{% endblock %}
+{% block title %}{{ _('Απουσίες') }}{% endblock %}
 
 {% block breadcrumb %}
-<li class="breadcrumb-item active" aria-current="page">Απουσίες</li>
+<li class="breadcrumb-item active" aria-current="page">{{ _('Απουσίες') }}</li>
 {% endblock %}
 
 {% block content %}
-<h2><i class="fas fa-calendar-times me-2"></i>Απουσίες</h2>
+<h2><i class="fas fa-calendar-times me-2"></i>{{ _('Απουσίες') }}</h2>
 <div class="table-responsive">
     <table class="table table-striped table-hover sortable">
         <thead class="table-dark">
             <tr>
-                <th>Α.Μ.</th>
-                <th>Ονοματεπώνυμο</th>
-                <th>Τμήμα</th>
-                <th>Ημερομηνίες Απουσιών</th>
+                <th>{{ _('Α.Μ.') }}</th>
+                <th>{{ _('Ονοματεπώνυμο') }}</th>
+                <th>{{ _('Τμήμα') }}</th>
+                <th>{{ _('Ημερομηνίες Απουσιών') }}</th>
             </tr>
         </thead>
         <tbody>

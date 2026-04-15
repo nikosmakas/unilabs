@@ -1,14 +1,14 @@
 ﻿{% extends "base.html" %}
 
-{% block title %}Οι Εγγραφές μου{% endblock %}
+{% block title %}{{ _('Οι Εγγραφές μου') }}{% endblock %}
 
 {% block breadcrumb %}
-<li class="breadcrumb-item active" aria-current="page">Οι Εγγραφές μου</li>
+<li class="breadcrumb-item active" aria-current="page">{{ _('Οι Εγγραφές μου') }}</li>
 {% endblock %}
 
 {% block content %}
 <h2 class="mb-4">
-    <i class="fas fa-clipboard-check me-2"></i>Οι Εγγραφές μου
+    <i class="fas fa-clipboard-check me-2"></i>{{ _('Οι Εγγραφές μου') }}
 </h2>
 
 <div id="enrollmentAlert"></div>
@@ -39,12 +39,12 @@
                 <div class="d-flex justify-content-between">
                     <span>
                         <i class="fas fa-calendar-times me-1"></i>
-                        Απουσίες: <strong>{{ enrollment.absences }}</strong>
+                        {{ _('Απουσίες') }}: <strong>{{ enrollment.absences }}</strong>
                     </span>
                     {% if enrollment.grade > 0 %}
                     <span>
                         <i class="fas fa-star me-1"></i>
-                        Βαθμός: <strong>{{ enrollment.grade }}</strong>
+                        {{ _('Βαθμός') }}: <strong>{{ enrollment.grade }}</strong>
                     </span>
                     {% endif %}
                 </div>
@@ -52,12 +52,12 @@
                 <hr>
                 <div class="d-flex gap-2">
                     <a href="{{ url_for('views_bp.registration', lab_id=enrollment.lab_id, group_id=enrollment.group_id) }}" class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-exchange-alt me-1"></i>Αλλαγή Τμήματος
+                        <i class="fas fa-exchange-alt me-1"></i>{{ _('Αλλαγή Τμήματος') }}
                     </a>
                     <button type="button" class="btn btn-sm btn-outline-danger unenroll-btn"
                             data-lab-id="{{ enrollment.lab_id }}"
                             data-lab-name="{{ enrollment.lab_name }}">
-                        <i class="fas fa-times-circle me-1"></i>Απεγγραφή
+                        <i class="fas fa-times-circle me-1"></i>{{ _('Απεγγραφή') }}
                     </button>
                 </div>
                 {% endif %}

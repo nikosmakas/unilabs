@@ -1,163 +1,144 @@
-# UniLabs - Σύστημα Διαχείρισης Εργαστηρίων
+# UniLabs - University Laboratory Management System
 
-Διαδικτυακή εφαρμογή για τη διαχείριση εργαστηρίων και εγγραφών φοιτητών.
+A full-featured web application for managing university laboratory registrations, student groups, grades, and absences. Built as a thesis project for the Department of Informatics & Telecommunications, University of Ioannina.
 
-## 📁 Δομή Project
+## Key Features
+
+- **Role-Based Access Control (RBAC)** - Separate views and permissions for Students, Professors, and Administrators
+- **Cascading Registration** - Students register via Semester > Course > Lab > Group dropdowns with real-time occupancy
+- **Grades & Absences** - Professors record absences per date and assign grades (0-10) with auto-status updates
+- **CSV Import/Export** - Bulk import eligibility lists; export group rosters as UTF-8 BOM CSV (Excel-compatible)
+- **Admin Dashboard** - Full CRUD for Labs, Groups, Courses, and Professors with safety checks
+- **Internationalization (i18n)** - Greek/English UI switching via Flask-Babel
+- **CAS SSO Ready** - Pluggable authentication supporting both CAS single sign-on and local dev mode
+- **Dark/Light Theme** - User-selectable theme with localStorage persistence
+- **Responsive Design** - Collapsible sidebar, mobile-first layout with Bootstrap 5
+
+## Tech Stack
+
+| Layer       | Technology                          |
+|-------------|-------------------------------------|
+| Backend     | Python 3.11+, Flask 2.3+           |
+| Database    | SQLite (via Flask-SQLAlchemy)       |
+| Frontend    | Bootstrap 5.3, Font Awesome 6      |
+| i18n        | Flask-Babel 4.0                     |
+| Auth        | CAS SSO / Dev mode (Flask-Login)   |
+
+## Project Structure
+
 ```
-thesis/unilabs/
-├── app/                            # Flask Application Root
-│   ├── data/
-│   │   ├── labregister.sqlite      # SQLite Database
-│   │   └── data_labregister.sql    # Schema Backup & Initial Data
+unilabs/
+├── app/
+│   ├── app.py              # Flask application factory & config
+│   ├── auth.py             # Authentication, RBAC, enrollment logic
+│   ├── helpers.py          # Shared utility functions
+│   ├── models.py           # SQLAlchemy ORM models
 │   ├── routes/
-│   │   ├── api.py                  # REST API Endpoints
-│   │   ├── auth_routes.py          # Authentication (CAS + Dev Mode)
-│   │   └── views.py               # Page Routes (Blueprints)
-│   ├── static/css/style.css        # Stylesheet (Dark/Light theme)
-│   ├── templates/                  # Jinja2 HTML Templates
-│   ├── app.py                      # Main Entry Point
-│   ├── auth.py                     # Authorization & Registration Logic
-│   ├── helpers.py                  # Utility Functions
-│   ├── models.py                   # SQLAlchemy Database Models
-│   ├── requirements.txt            # Python Dependencies
-│   └── run_tests.py                # Automated Testing Suite
-│
-├── docs/
-│   ├── AUTHORIZATION_GUIDE.md      # Detailed Authorization Docs
-│   ├── DEV_MODE_GUIDE.md           # Documentation for Developer Mode
-│   ├── TESTING_CHECKLIST.md        # Manual Testing & QA Guide
-│   └── previous_project_blueprint.json
-│
-├── tests/
-│   └── test_dev_auth.py            # Authentication & Security Tests
-│
-├── seed.py                         # Database Seeder (mock data)
-├── .gitignore
+│   │   ├── api.py          # REST API endpoints
+│   │   ├── auth_routes.py  # Login/logout routes
+│   │   └── views.py        # Page rendering routes
+│   ├── templates/          # Jinja2 HTML templates
+│   ├── static/             # CSS, JS assets
+│   ├── data/               # SQLite database file
+│   └── translations/       # i18n message catalogs (en, el)
+├── babel.cfg               # Babel extraction config
+├── compile_translations.py # Compile .po to .mo (no CLI needed)
+├── requirements.txt        # Python dependencies
 └── README.md
 ```
 
-## 🚀 Γρήγορη Εκκίνηση
+## Installation
 
-### 1. Εγκατάσταση
+### 1. Clone & Install Dependencies
+
 ```bash
-cd thesis/unilabs/app
+cd unilabs
 pip install -r requirements.txt
 ```
 
-### 2. Seed Database (mock data)
+### 2. Seed the Database (Development)
+
 ```bash
-cd thesis/unilabs
 python seed.py
 ```
 
-### 3. Εκκίνηση Server
+### 3. Compile Translations
+
 ```bash
-cd thesis/unilabs/app
-python app.py
+python compile_translations.py
 ```
 
-### 4. Πρόσβαση
-Άνοιξε: **http://localhost:5000/login**
+### 4. Start the Server
 
-## 🔐 Development Mode
-
-Για testing χωρίς CAS authentication:
-
-| User       | Role         | ID      | Description              |
-|------------|--------------|---------|--------------------------|
-| `student1` | Φοιτητής     | AM 13628| Dev test student         |
-| `student2` | Φοιτητής     | AM 10001| Αλεξίου Μαρία            |
-| `prof1`    | Καθηγητής    | ID 101  | Παπαδόπουλος Νίκος       |
-| `prof2`    | Καθηγήτρια   | ID 102  | Αντωνίου Ελένη           |
-| `admin1`   | Διαχειριστής | ID 999  | Full access              |
-
-> Ενεργοποίηση: `AUTH_MODE=dev` στο environment
-
-## ✨ Features
-
-### Για Φοιτητές
-- ✅ Εγγραφή σε εργαστήριο (cascading dropdowns)
-- ✅ Αλλαγή τμήματος
-- ✅ Προβολή εγγραφών & απουσιών
-- ✅ Ενημέρωση προφίλ
-
-### Για Καθηγητές/Admins
-- ✅ Προβολή όλων των εγγραφών
-- ✅ Διαχείριση απουσιών
-- ✅ Προβολή φοιτητών
-
-### Σύστημα
-- ✅ Role-based access control
-- ✅ Audit logging
-- ✅ Registration period validation
-- ✅ Group capacity management
-- ✅ Dark/Light theme
-
-## 🔧 APIs
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/semesters` | GET | Λίστα εξαμήνων |
-| `/api/courses/<semester>` | GET | Μαθήματα ανά εξάμηνο |
-| `/api/labs/<course_id>` | GET | Εργαστήρια ανά μάθημα |
-| `/api/groups/<lab_id>` | GET | Τμήματα + occupancy |
-| `/api/register-lab` | POST | Εγγραφή σε εργαστήριο |
-| `/api/change-group` | PUT | Αλλαγή τμήματος |
-| `/api/student/enrollment/<lab_id>` | DELETE | Απεγγραφή από εργαστήριο |
-| `/api/student/enrollments` | GET | Εγγραφές φοιτητή |
-| `/api/student/profile` | GET/PUT | Προφίλ φοιτητή |
-| `/api/student/notifications` | GET | Ειδοποιήσεις απουσιών |
-| `/api/professor/my-groups` | GET | Τμήματα καθηγητή |
-| `/api/professor/group/<id>/students` | GET | Φοιτητές τμήματος |
-| `/api/professor/profile` | PUT | Επεξεργασία προφίλ καθηγητή |
-| `/api/labs/<lab_id>/description` | PUT | Επεξεργασία περιγραφής εργαστηρίου |
-
-## 🧪 Testing
 ```bash
-# Terminal 1: Seed + start server
-cd thesis/unilabs
-python seed.py
 cd app
 python app.py
-
-# Terminal 2: Run tests
-cd thesis/unilabs/app
-python run_tests.py
 ```
 
-## 📊 Database
+Open **http://localhost:5000/login** in your browser.
 
-Κύριοι πίνακες:
-- `student` - Φοιτητές
-- `professor` - Καθηγητές  
-- `coursename` - Μαθήματα
-- `course_lab` - Εργαστήρια
-- `lab_groups` - Τμήματα
-- `rel_lab_student` - Εγγραφές σε εργαστήρια
-- `rel_group_student` - Εγγραφές σε τμήματα
-- `student_misses_pergroup` - Απουσίες
+## Development Mode
 
-## 🔒 Production Deployment
+Set `AUTH_MODE=dev` in your environment (or `.env` file) to enable local authentication without CAS.
 
-1. Set `AUTH_MODE=cas`
-2. Configure CAS URLs in `app.py`: CAS_SERVER_URL = 'https://sso.uoi.gr/login' CAS_SERVICE_URL = 'https://your-domain.gr/cas_callback'
-3. Set secure `SECRET_KEY`
-4. Use production WSGI (gunicorn/uwsgi)
+| Username   | Role          | ID       | Description              |
+|------------|---------------|----------|--------------------------|
+| `student1` | Student       | AM 13628 | Dev test student         |
+| `student2` | Student       | AM 10001 | Dev test student 2       |
+| `prof1`    | Professor     | ID 101   | Test professor           |
+| `prof2`    | Professor     | ID 102   | Test professor 2         |
+| `admin1`   | Administrator | ID 999   | Full admin access        |
 
-## 📚 Documentation
+## API Reference
 
-- [Dev Mode Guide](docs/DEV_MODE_GUIDE.md)
-- [Authorization Guide](docs/AUTHORIZATION_GUIDE.md)
-- [Testing Checklist](docs/TESTING_CHECKLIST.md)
+### Public (Authenticated)
 
-## 🔄 Migration από LabRegFrontCas
+| Endpoint                             | Method | Description                    |
+|--------------------------------------|--------|--------------------------------|
+| `/api/semesters`                     | GET    | List semesters                 |
+| `/api/courses/<semester>`            | GET    | Courses by semester            |
+| `/api/labs/<course_id>`              | GET    | Labs by course                 |
+| `/api/groups/<lab_id>`               | GET    | Groups with occupancy          |
+| `/api/register-lab`                  | POST   | Register for a lab group       |
+| `/api/change-group`                  | PUT    | Change enrolled group          |
+| `/api/student/enrollment/<lab_id>`   | DELETE | Unenroll from a lab            |
+| `/api/student/enrollments`           | GET    | Current student enrollments    |
+| `/api/student/notifications`         | GET    | Absence notifications          |
 
-Αυτό το project αντικαθιστά το παλιό `LabRegFrontCas` με:
-- Νέο Flask backend (Python)
-- Modern Bootstrap 5 UI
-- REST APIs
-- Role-based authorization
+### Professor / Admin
 
----
-## GitHub Repository
-[https://github.com/nikosmakas/unilabs]
+| Endpoint                                          | Method | Description                |
+|---------------------------------------------------|--------|----------------------------|
+| `/api/professor/my-groups`                        | GET    | Professor's assigned groups|
+| `/api/professor/group/<id>/students`              | GET    | Group student roster       |
+| `/api/professor/group/<id>/student/<am>/grade`    | PUT    | Update student grade       |
+| `/api/professor/group/<id>/student/<am>/absence`  | POST   | Record absence             |
+| `/api/professor/group/<id>/student/<am>/absence`  | DELETE | Remove absence             |
+| `/api/professor/group/<id>/export`                | GET    | Export group CSV           |
+
+### Admin Only
+
+| Endpoint                                     | Method | Description                |
+|----------------------------------------------|--------|----------------------------|
+| `/api/admin/labs`                            | POST   | Create lab                 |
+| `/api/admin/labs/<id>`                       | PUT    | Edit lab                   |
+| `/api/admin/labs/<id>`                       | DELETE | Delete lab                 |
+| `/api/admin/groups`                          | POST   | Create group               |
+| `/api/admin/groups/<id>`                     | PUT    | Edit group                 |
+| `/api/admin/groups/<id>`                     | DELETE | Delete group               |
+| `/api/admin/courses`                         | POST   | Create course              |
+| `/api/admin/courses/<id>`                    | DELETE | Delete course              |
+| `/api/admin/professors`                      | POST   | Create professor           |
+| `/api/admin/professors/<id>`                 | DELETE | Delete professor           |
+| `/api/admin/course/<id>/import-eligible`     | POST   | Import eligibility CSV     |
+| `/api/admin/course/<id>/clear-eligible`      | DELETE | Clear eligibility list     |
+
+## Adding Translations
+
+1. Add `_('New Greek Text')` calls in Jinja templates
+2. Add corresponding entries to `app/translations/en/LC_MESSAGES/messages.po`
+3. Run `python compile_translations.py` from the `unilabs/` directory
+
+## License
+
+This project was developed as a thesis for the University of Ioannina.

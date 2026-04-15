@@ -1,4 +1,5 @@
-﻿from flask import Blueprint, render_template, session
+﻿from flask import Blueprint, render_template, session, redirect, request, url_for
+from flask_babel import _
 
 from models import (
     Student, Professor, db, LabGroup, CourseLab,
@@ -11,6 +12,14 @@ from auth import (
 from helpers import get_group_occupancy
 
 views_bp = Blueprint('views_bp', __name__)
+
+
+@views_bp.route('/set-language/<lang>')
+def set_language(lang):
+    """Switch UI language between Greek and English."""
+    if lang in ('el', 'en'):
+        session['language'] = lang
+    return redirect(request.referrer or url_for('views_bp.dashboard'))
 
 
 @views_bp.route('/dashboard')

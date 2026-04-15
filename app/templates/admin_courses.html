@@ -1,25 +1,23 @@
 {% extends "base.html" %}
 
-{% block title %}Διαχείριση Μαθημάτων{% endblock %}
+{% block title %}{{ _('Διαχείριση Μαθημάτων') }}{% endblock %}
 
 {% block breadcrumb %}
-<li class="breadcrumb-item active" aria-current="page">Διαχείριση Μαθημάτων</li>
+<li class="breadcrumb-item active" aria-current="page">{{ _('Διαχείριση Μαθημάτων') }}</li>
 {% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="mb-0">
-        <i class="fas fa-user-shield me-2"></i>Διαχείριση Μαθημάτων — Δικαιούχοι Εγγραφής
+        <i class="fas fa-user-shield me-2"></i>{{ _('Διαχείριση Μαθημάτων') }} — {{ _('Δικαιούχοι Εγγραφής') }}
     </h2>
     <button class="btn btn-success" onclick="openCreateCourseModal()">
-        <i class="fas fa-plus me-1"></i>Δημιουργία Μαθήματος
+        <i class="fas fa-plus me-1"></i>{{ _('Δημιουργία Μαθήματος') }}
     </button>
 </div>
 
 <p class="text-muted mb-4">
-    Ανεβάστε αρχείο CSV με τα Α.Μ. των φοιτητών που έχουν δηλώσει κάθε θεωρητικό μάθημα.
-    Μόνο αυτοί θα μπορούν να εγγραφούν στα αντίστοιχα εργαστήρια.
-    Αν δεν υπάρχει λίστα, η εγγραφή είναι ελεύθερη για όλους.
+    {{ _('Ανεβάστε αρχείο CSV με τα Α.Μ. των φοιτητών που έχουν δηλώσει κάθε θεωρητικό μάθημα. Μόνο αυτοί θα μπορούν να εγγραφούν στα αντίστοιχα εργαστήρια. Αν δεν υπάρχει λίστα, η εγγραφή είναι ελεύθερη για όλους.') }}
 </p>
 
 <div id="adminAlert"></div>
@@ -29,10 +27,10 @@
         <thead class="table-dark">
             <tr>
                 <th>ID</th>
-                <th>Εξάμηνο</th>
-                <th>Μάθημα</th>
-                <th>Δικαιούχοι</th>
-                <th>Ενέργειες</th>
+                <th>{{ _('Εξάμηνο') }}</th>
+                <th>{{ _('Μάθημα') }}</th>
+                <th>{{ _('Δικαιούχοι') }}</th>
+                <th>{{ _('Ενέργειες') }}</th>
             </tr>
         </thead>
         <tbody>
@@ -43,7 +41,7 @@
                 <td><strong>{{ course.name }}</strong></td>
                 <td>
                     <span class="badge {{ 'bg-success' if course.eligible_count > 0 else 'bg-secondary' }}" id="count-{{ course.course_id }}">
-                        {{ course.eligible_count if course.eligible_count > 0 else 'Χωρίς λίστα' }}
+                        {{ course.eligible_count if course.eligible_count > 0 else _('Χωρίς λίστα') }}
                     </span>
                 </td>
                 <td>
@@ -51,15 +49,15 @@
                         <form class="upload-form d-inline-flex align-items-center gap-1" data-course-id="{{ course.course_id }}">
                             <input type="file" accept=".csv" class="form-control form-control-sm csv-file-input" style="max-width:200px" required>
                             <button type="submit" class="btn btn-sm btn-primary">
-                                <i class="fas fa-upload me-1"></i>Ανέβασμα
+                                <i class="fas fa-upload me-1"></i>{{ _('Ανέβασμα') }}
                             </button>
                         </form>
                         {% if course.eligible_count > 0 %}
-                        <button class="btn btn-sm btn-outline-danger clear-btn" data-course-id="{{ course.course_id }}" title="Διαγραφή λίστας">
+                        <button class="btn btn-sm btn-outline-danger clear-btn" data-course-id="{{ course.course_id }}" title="{{ _('Διαγραφή λίστας') }}" aria-label="{{ _('Clear eligibility list') }}">
                             <i class="fas fa-trash-alt"></i>
                         </button>
                         {% endif %}
-                        <button class="btn btn-sm btn-outline-danger delete-course-btn" onclick="deleteCourse({{ course.course_id }}, '{{ course.name }}')" title="Διαγραφή μαθήματος">
+                        <button class="btn btn-sm btn-outline-danger delete-course-btn" onclick="deleteCourse({{ course.course_id }}, '{{ course.name }}')" title="{{ _('Διαγραφή μαθήματος') }}" aria-label="{{ _('Delete course') }}">
                             <i class="fas fa-times-circle"></i>
                         </button>
                     </div>
@@ -71,24 +69,24 @@
 </div>
 
 <!-- Create Course Modal -->
-<div class="modal fade" id="createCourseModal" tabindex="-1" aria-labelledby="createCourseModalLabel" aria-hidden="true">
+<div class="modal fade" id="createCourseModal" tabindex="-1" aria-labelledby="createCourseModalLabel" aria-hidden="true" aria-modal="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header bg-primary text-white">
         <h5 class="modal-title" id="createCourseModalLabel">
-            <i class="fas fa-book me-2"></i>Νέο Μάθημα
+            <i class="fas fa-book me-2"></i>{{ _('Νέο Μάθημα') }}
         </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         <div class="mb-3">
-          <label for="newCourseName" class="form-label">Όνομα Μαθήματος</label>
+          <label for="newCourseName" class="form-label">{{ _('Όνομα Μαθήματος') }}</label>
           <input type="text" class="form-control" id="newCourseName" placeholder="π.χ. Βάσεις Δεδομένων">
         </div>
         <div class="mb-3">
-          <label for="newCourseSemester" class="form-label">Εξάμηνο</label>
+          <label for="newCourseSemester" class="form-label">{{ _('Εξάμηνο') }}</label>
           <select class="form-select" id="newCourseSemester">
-            <option value="">-- Επιλέξτε εξάμηνο --</option>
+            <option value="">-- {{ _('Επιλέξτε εξάμηνο') }} --</option>
             <option value="1ο Εξάμηνο">1ο Εξάμηνο</option>
             <option value="2ο Εξάμηνο">2ο Εξάμηνο</option>
             <option value="3ο Εξάμηνο">3ο Εξάμηνο</option>
@@ -102,9 +100,9 @@
         <div id="createCourseAlert"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Άκυρο</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ _('Άκυρο') }}</button>
         <button type="button" class="btn btn-primary" onclick="saveCourse()">
-            <i class="fas fa-plus me-1"></i>Δημιουργία
+            <i class="fas fa-plus me-1"></i>{{ _('Δημιουργία') }}
         </button>
       </div>
     </div>

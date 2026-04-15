@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="el">
+<html lang="{{ current_language }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Σύστημα Διαχείρισης Εργαστηρίων{% endblock %}</title>
+    <title>{% block title %}{{ _('Σύστημα Διαχείρισης Εργαστηρίων') }}{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
@@ -11,31 +11,35 @@
 <body>
     <!-- Top Bar -->
     <div class="top-fixed-buttons">
-        <button class="toggle-btn" id="sidebarToggle" aria-expanded="true" aria-controls="sidebar" aria-label="Toggle navigation">
+        <button class="toggle-btn" id="sidebarToggle" aria-expanded="true" aria-controls="sidebar" aria-label="{{ _('Toggle navigation') }}">
             <i class="fas fa-bars"></i>
         </button>
-        <button class="btn btn-outline-secondary" id="themeToggle" aria-label="Toggle Dark Mode">
+        <button class="btn btn-outline-secondary" id="themeToggle" aria-label="{{ _('Toggle Dark Mode') }}">
             <i class="fas fa-moon"></i> <span class="d-none d-md-inline">Dark/Light</span>
         </button>
+        <div class="btn-group btn-group-sm ms-1" role="group" aria-label="{{ _('Language switcher') }}">
+            <a href="{{ url_for('views_bp.set_language', lang='el') }}" class="btn {% if current_language == 'el' %}btn-primary{% else %}btn-outline-secondary{% endif %}" aria-label="Ελληνικά">GR</a>
+            <a href="{{ url_for('views_bp.set_language', lang='en') }}" class="btn {% if current_language == 'en' %}btn-primary{% else %}btn-outline-secondary{% endif %}" aria-label="English">EN</a>
+        </div>
         <a href="{{ url_for('views_bp.dashboard') }}" class="btn btn-primary">
-            <i class="fas fa-home me-1"></i> <span class="d-none d-md-inline">Αρχική</span>
+            <i class="fas fa-home me-1"></i> <span class="d-none d-md-inline">{{ _('Αρχική') }}</span>
         </a>
         <div class="top-bar-title">
-            <h4>Σύστημα Εργαστηρίων <small class="text-muted fs-6">{{ academic_year }}-{{ academic_year + 1 }}</small></h4>
+            <h4>{{ _('Σύστημα Εργαστηρίων') }} <small class="text-muted fs-6">{{ academic_year }}-{{ academic_year + 1 }}</small></h4>
         </div>
     </div>
 
     <!-- Sidebar -->
-    <nav class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
+    <nav class="sidebar" id="sidebar" role="navigation" aria-label="{{ _('Main navigation') }}">
         <div class="p-3">
-            <h5>Σύστημα Εργαστηρίων</h5>
+            <h5>{{ _('Σύστημα Εργαστηρίων') }}</h5>
             
             <!-- User Info Section -->
             <div class="mt-3 p-2 user-info-box">
-                <small class="user-info-label">Συνδεδεμένος:</small>
+                <small class="user-info-label">{{ _('Συνδεδεμένος:') }}</small>
                 <div class="fw-bold">{{ name }}</div>
                 <div class="badge bg-{% if role == 'student' %}success{% elif role == 'professor' %}primary{% elif role == 'admin' %}danger{% else %}secondary{% endif %}">
-                    {% if role == 'student' %}Φοιτητής{% elif role == 'professor' %}Καθηγητής{% elif role == 'admin' %}Διαχειριστής{% elif role == 'guest' %}Επισκέπτης{% else %}{{ role|title }}{% endif %}
+                    {% if role == 'student' %}{{ _('Φοιτητής') }}{% elif role == 'professor' %}{{ _('Καθηγητής') }}{% elif role == 'admin' %}{{ _('Διαχειριστής') }}{% elif role == 'guest' %}{{ _('Επισκέπτης') }}{% else %}{{ role|title }}{% endif %}
                 </div>
                 {% if AUTH_MODE == 'dev' %}
                 <div class="mt-2">
@@ -49,13 +53,13 @@
             {% if role != 'guest' %}
             <div class="mt-3">
                 <a href="{{ url_for('auth_bp.logout') }}" class="btn btn-outline-light btn-sm w-100">
-                    <i class="fas fa-sign-out-alt"></i> Αποσύνδεση
+                    <i class="fas fa-sign-out-alt"></i> {{ _('Αποσύνδεση') }}
                 </a>
             </div>
             {% else %}
             <div class="mt-3">
                 <a href="{{ url_for('auth_bp.login') }}" class="btn btn-primary btn-sm w-100">
-                    <i class="fas fa-sign-in-alt"></i> Σύνδεση
+                    <i class="fas fa-sign-in-alt"></i> {{ _('Σύνδεση') }}
                 </a>
             </div>
             {% endif %}
@@ -64,64 +68,64 @@
         <ul class="nav flex-column">
             <li class="nav-item">
                 <a class="nav-link {% if active_page == 'dashboard' %}active{% endif %}" href="{{ url_for('views_bp.dashboard') }}">
-                    <i class="fas fa-tachometer-alt me-2"></i>Αρχική
+                    <i class="fas fa-tachometer-alt me-2"></i>{{ _('Αρχική') }}
                 </a>
             </li>
             {% if role == 'student' %}
             <li class="nav-item">
                 <a class="nav-link {% if active_page == 'registration' %}active{% endif %}" href="{{ url_for('views_bp.registration') }}">
-                    <i class="fas fa-plus-circle me-2"></i>Εγγραφή σε Εργαστήριο
+                    <i class="fas fa-plus-circle me-2"></i>{{ _('Εγγραφή σε Εργαστήριο') }}
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link {% if active_page == 'my_enrollments' %}active{% endif %}" href="{{ url_for('views_bp.my_enrollments') }}">
-                    <i class="fas fa-clipboard-check me-2"></i>Οι Εγγραφές μου
+                    <i class="fas fa-clipboard-check me-2"></i>{{ _('Οι Εγγραφές μου') }}
                 </a>
             </li>
             {% endif %}
             <li class="nav-item">
                 <a class="nav-link {% if active_page == 'labs' %}active{% endif %}" href="{{ url_for('views_bp.labs_page') }}">
-                    <i class="fas fa-flask me-2"></i>Εργαστήρια
+                    <i class="fas fa-flask me-2"></i>{{ _('Εργαστήρια') }}
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link {% if active_page == 'groups' %}active{% endif %}" href="{{ url_for('views_bp.groups_page') }}">
-                    <i class="fas fa-users me-2"></i>Τμήματα
+                    <i class="fas fa-users me-2"></i>{{ _('Τμήματα') }}
                 </a>
             </li>
             {% if role in ['professor', 'admin'] %}
             <li class="nav-item">
                 <a class="nav-link {% if active_page == 'students' %}active{% endif %}" href="{{ url_for('views_bp.students_page') }}">
-                    <i class="fas fa-user-graduate me-2"></i>Φοιτητές
+                    <i class="fas fa-user-graduate me-2"></i>{{ _('Φοιτητές') }}
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link {% if active_page == 'my_groups' %}active{% endif %}" href="{{ url_for('views_bp.my_groups_page') }}">
-                    <i class="fas fa-chalkboard-teacher me-2"></i>Τα Τμήματά μου
+                    <i class="fas fa-chalkboard-teacher me-2"></i>{{ _('Τα Τμήματά μου') }}
                 </a>
             </li>
             {% endif %}
             <li class="nav-item">
                 <a class="nav-link {% if active_page == 'professors' %}active{% endif %}" href="{{ url_for('views_bp.professors_page') }}">
-                    <i class="fas fa-user-tie me-2"></i>Υπεύθυνοι
+                    <i class="fas fa-user-tie me-2"></i>{{ _('Υπεύθυνοι') }}
                 </a>
             </li>
             {% if role in ['professor', 'admin'] %}
             <li class="nav-item">
                 <a class="nav-link {% if active_page == 'registrations' %}active{% endif %}" href="{{ url_for('views_bp.registrations_page') }}">
-                    <i class="fas fa-clipboard-list me-2"></i>Εγγραφές
+                    <i class="fas fa-clipboard-list me-2"></i>{{ _('Εγγραφές') }}
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link {% if active_page == 'absences' %}active{% endif %}" href="{{ url_for('views_bp.absences_page') }}">
-                    <i class="fas fa-calendar-times me-2"></i>Απουσίες
+                    <i class="fas fa-calendar-times me-2"></i>{{ _('Απουσίες') }}
                 </a>
             </li>
             {% endif %}
             {% if role == 'admin' %}
             <li class="nav-item">
                 <a class="nav-link {% if active_page == 'admin_courses' %}active{% endif %}" href="{{ url_for('views_bp.admin_courses_page') }}">
-                    <i class="fas fa-user-shield me-2"></i>Διαχείριση Μαθημάτων
+                    <i class="fas fa-user-shield me-2"></i>{{ _('Διαχείριση Μαθημάτων') }}
                 </a>
             </li>
             {% endif %}
@@ -151,9 +155,9 @@
             <ol class="breadcrumb">
                 <li class="breadcrumb-item {% if active_page == 'dashboard' %}active{% endif %}">
                     {% if active_page != 'dashboard' %}
-                    <a href="{{ url_for('views_bp.dashboard') }}"><i class="fas fa-home me-1"></i>Αρχική</a>
+                    <a href="{{ url_for('views_bp.dashboard') }}"><i class="fas fa-home me-1"></i>{{ _('Αρχική') }}</a>
                     {% else %}
-                    <i class="fas fa-home me-1"></i>Αρχική
+                    <i class="fas fa-home me-1"></i>{{ _('Αρχική') }}
                     {% endif %}
                 </li>
                 {% block breadcrumb %}{% endblock %}

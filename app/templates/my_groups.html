@@ -1,36 +1,36 @@
 ﻿{% extends "base.html" %}
 
-{% block title %}Τα Τμήματά μου{% endblock %}
+{% block title %}{{ _('Τα Τμήματά μου') }}{% endblock %}
 
 {% block breadcrumb %}
-<li class="breadcrumb-item active" aria-current="page">Τα Τμήματά μου</li>
+<li class="breadcrumb-item active" aria-current="page">{{ _('Τα Τμήματά μου') }}</li>
 {% endblock %}
 
 {% block content %}
 <h2 class="mb-4">
-    <i class="fas fa-chalkboard-teacher me-2"></i>Τα Τμήματά μου
+    <i class="fas fa-chalkboard-teacher me-2"></i>{{ _('Τα Τμήματά μου') }}
 </h2>
 
 <div id="myGroupsLoading" class="text-center py-4">
     <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Φόρτωση...</span>
+        <span class="visually-hidden">{{ _('Φόρτωση...') }}</span>
     </div>
 </div>
 
 <div id="myGroupsContainer" class="row d-none"></div>
 
 <!-- Modal για προβολή φοιτητών τμήματος -->
-<div class="modal fade" id="groupStudentsModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">
-                    <i class="fas fa-users me-2"></i>Φοιτητές Τμήματος
+<div class="modal fade" id="groupStudentsModal" tabindex="-1" aria-labelledby="groupStudentsModalLabel" aria-hidden="true" aria-modal="true">
+<div class="modal-dialog modal-xl">
+    <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title" id="groupStudentsModalLabel">
+                    <i class="fas fa-users me-2"></i>{{ _('Φοιτητές Τμήματος') }}
                 </h5>
-                <a id="exportCsvBtn" class="btn btn-sm btn-outline-light ms-3" href="#" download>
-                    <i class="fas fa-file-csv me-1"></i>Εξαγωγή CSV
+                <a id="exportCsvBtn" class="btn btn-sm btn-outline-light ms-3" href="#" download aria-label="{{ _('Export CSV') }}">
+                    <i class="fas fa-file-csv me-1"></i>{{ _('Εξαγωγή CSV') }}
                 </a>
-                <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="modal" aria-label="{{ _('Close') }}"></button>
             </div>
             <div class="modal-body">
                 <div id="groupStudentsLoading" class="text-center py-4">
@@ -42,23 +42,23 @@
                         <span class="badge bg-info" id="groupStudentsCount"></span>
                     </div>
                     <div class="input-group input-group-sm mb-3" style="max-width:350px">
-                        <input type="number" class="form-control" id="addStudentAmInput" placeholder="Α.Μ. Φοιτητή" min="1">
-                        <button class="btn btn-success" type="button" onclick="forceAddStudent()">
-                            <i class="fas fa-user-plus me-1"></i>Προσθήκη
+                        <input type="number" class="form-control" id="addStudentAmInput" placeholder="{{ _('Α.Μ. Φοιτής') }}" min="1">
+                        <button class="btn btn-success" type="button" onclick="forceAddStudent()" aria-label="{{ _('Add student') }}">
+                            <i class="fas fa-user-plus me-1"></i>{{ _('Προσθήκη') }}
                         </button>
                     </div>
                     <div class="table-responsive">
                         <table class="table table-hover" id="groupStudentsTable">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Α.Μ.</th>
-                                    <th>Ονοματεπώνυμο</th>
+                                    <th>{{ _('Α.Μ.') }}</th>
+                                    <th>{{ _('Ονοματεπώνυμο') }}</th>
                                     <th>Email</th>
-                                    <th>Εξάμηνο</th>
-                                    <th>Απουσίες</th>
-                                    <th>Βαθμός</th>
-                                    <th>Κατάσταση</th>
-                                    <th>Ενέργειες</th>
+                                    <th>{{ _('Εξάμηνο') }}</th>
+                                    <th>{{ _('Απουσίες') }}</th>
+                                    <th>{{ _('Βαθμός') }}</th>
+                                    <th>{{ _('Κατάσταση') }}</th>
+                                    <th>{{ _('Ενέργειες') }}</th>
                                 </tr>
                             </thead>
                             <tbody id="groupStudentsBody"></tbody>
@@ -66,7 +66,7 @@
                     </div>
                 </div>
                 <div id="groupStudentsEmpty" class="alert alert-info d-none">
-                    <i class="fas fa-info-circle me-2"></i>Δεν υπάρχουν εγγεγραμμένοι φοιτητές σε αυτό το τμήμα.
+                    <i class="fas fa-info-circle me-2"></i>{{ _('Δεν υπάρχουν εγγεγραμμένοι φοιτητές σε αυτό το τμήμα.') }}
                 </div>
                 <div id="gradeToast" class="alert d-none mt-2" role="alert"></div>
             </div>
@@ -185,7 +185,7 @@
         if (!dates.length) return '<em class="text-muted small">Καμία απουσία</em>';
         return dates.map(d =>
             `<span class="badge bg-light text-dark border me-1 mb-1">`
-            + `${d} <button type="button" class="btn-close btn-close-sm ms-1 remove-absence-btn" data-date="${d}" aria-label="Remove"></button>`
+            + `${d} <button type="button" class="btn-close btn-close-sm ms-1 remove-absence-btn" data-date="${d}" aria-label="Remove absence ${d}"></button>`
             + `</span>`
         ).join('');
     }
@@ -195,7 +195,7 @@
         const badgeClass = count === 0 ? 'bg-success' : 'bg-warning text-dark';
         return `<div class="absence-cell">`
             + `<span class="badge ${badgeClass} absence-count-badge" role="button" title="Προβολή απουσιών" style="cursor:pointer">${count}</span>`
-            + ` <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1 add-absence-btn" title="Καταγραφή απουσίας σήμερα"><i class="fas fa-plus fa-xs"></i></button>`
+            + ` <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1 add-absence-btn" title="Καταγραφή απουσίας σήμερα" aria-label="Record absence"><i class="fas fa-plus fa-xs"></i></button>`
             + `<div class="absence-dates-list mt-1 d-none">${renderAbsenceDates(student.absences_list)}</div>`
             + `</div>`;
     }
@@ -300,11 +300,11 @@
                         + `<td>`
                         +   `<div class="input-group input-group-sm" style="width:120px">`
                         +     `<input type="number" min="0" max="10" class="form-control form-control-sm grade-input" value="${student.grade}" aria-label="Grade for ${student.am}">`
-                        +     `<button class="btn btn-success btn-sm save-grade-btn" type="button" title="Αποθήκευση"><i class="fas fa-save"></i></button>`
+                        +     `<button class="btn btn-success btn-sm save-grade-btn" type="button" title="Αποθήκευση" aria-label="Save grade"><i class="fas fa-save"></i></button>`
                         +   `</div>`
                         + `</td>`
                         + `<td class="status-cell">${statusBadge(student.status)}</td>`
-                        + `<td><button class="btn btn-sm btn-outline-danger remove-student-btn" title="Αφαίρεση"><i class="fas fa-user-times"></i></button></td>`
+                        + `<td><button class="btn btn-sm btn-outline-danger remove-student-btn" title="Αφαίρεση" aria-label="Remove student"><i class="fas fa-user-times"></i></button></td>`
                         + `</tr>`;
                 });
                 document.getElementById('groupStudentsBody').innerHTML = html;
@@ -410,10 +410,10 @@
                     + `<td>${buildAbsenceCell({absences_count:0, absences_list:[]})}</td>`
                     + `<td><div class="input-group input-group-sm" style="width:120px">`
                     +   `<input type="number" min="0" max="10" class="form-control form-control-sm grade-input" value="0">`
-                    +   `<button class="btn btn-success btn-sm save-grade-btn" type="button" title="Αποθήκευση"><i class="fas fa-save"></i></button>`
+                    +   `<button class="btn btn-success btn-sm save-grade-btn" type="button" title="Αποθήκευση" aria-label="Save grade"><i class="fas fa-save"></i></button>`
                     + `</div></td>`
                     + `<td class="status-cell">${statusBadge('Σε Εξέλιξη')}</td>`
-                    + `<td><button class="btn btn-sm btn-outline-danger remove-student-btn" title="Αφαίρεση"><i class="fas fa-user-times"></i></button></td>`;
+                    + `<td><button class="btn btn-sm btn-outline-danger remove-student-btn" title="Αφαίρεση" aria-label="Remove student"><i class="fas fa-user-times"></i></button></td>`;
                 document.getElementById('groupStudentsBody').appendChild(newRow);
 
                 // Bind events on the new row

@@ -1,6 +1,6 @@
 ﻿{% extends "base.html" %}
 
-{% block title %}Dashboard - Σύστημα Εργαστηρίων{% endblock %}
+{% block title %}Dashboard - {{ _('Σύστημα Εργαστηρίων') }}{% endblock %}
 
 {% block content %}
 <h2 class="mb-4">
@@ -13,12 +13,12 @@
     <div class="col-md-6">
         <div class="card registration-card h-100">
             <div class="card-header">
-                <i class="fas fa-plus-circle me-2"></i>Γρήγορη Εγγραφή
+                <i class="fas fa-plus-circle me-2"></i>{{ _('Γρήγορη Εγγραφή') }}
             </div>
             <div class="card-body">
-                <p>Εγγραφείτε σε νέο εργαστήριο επιλέγοντας εξάμηνο, μάθημα και τμήμα.</p>
+                <p>{{ _('Εγγραφείτε σε νέο εργαστήριο επιλέγοντας εξάμηνο, μάθημα και τμήμα.') }}</p>
                 <a href="{{ url_for('views_bp.registration') }}" class="btn btn-primary">
-                    <i class="fas fa-arrow-right me-1"></i>Εγγραφή τώρα
+                    <i class="fas fa-arrow-right me-1"></i>{{ _('Εγγραφή τώρα') }}
                 </a>
             </div>
         </div>
@@ -26,12 +26,12 @@
     <div class="col-md-6">
         <div class="card h-100">
             <div class="card-header bg-success text-white">
-                <i class="fas fa-clipboard-check me-2"></i>Οι Εγγραφές μου
+                <i class="fas fa-clipboard-check me-2"></i>{{ _('Οι Εγγραφές μου') }}
             </div>
             <div class="card-body">
-                <p>Δείτε τις τρέχουσες εγγραφές σας και τις απουσίες.</p>
+                <p>{{ _('Δείτε τις τρέχουσες εγγραφές σας και τις απουσίες.') }}</p>
                 <a href="{{ url_for('views_bp.my_enrollments') }}" class="btn btn-success">
-                    <i class="fas fa-eye me-1"></i>Προβολή
+                    <i class="fas fa-eye me-1"></i>{{ _('Προβολή') }}
                 </a>
             </div>
         </div>
@@ -45,9 +45,9 @@
         <div class="card h-100 text-center">
             <div class="card-body">
                 <i class="fas fa-flask fa-2x mb-2 text-primary"></i>
-                <h5 class="card-title">Εργαστήρια</h5>
-                <p class="card-text">{{ lab_count }} διαθέσιμα εργαστήρια</p>
-                <a href="{{ url_for('views_bp.labs_page') }}" class="btn btn-outline-primary">Προβολή</a>
+                <h5 class="card-title">{{ _('Εργαστήρια') }}</h5>
+                <p class="card-text">{{ lab_count }} {{ _('διαθέσιμα εργαστήρια') }}</p>
+                <a href="{{ url_for('views_bp.labs_page') }}" class="btn btn-outline-primary">{{ _('Προβολή') }}</a>
             </div>
         </div>
     </div>
@@ -55,9 +55,9 @@
         <div class="card h-100 text-center">
             <div class="card-body">
                 <i class="fas fa-users fa-2x mb-2 text-info"></i>
-                <h5 class="card-title">Τμήματα</h5>
-                <p class="card-text">{{ group_count }} ενεργά τμήματα</p>
-                <a href="{{ url_for('views_bp.groups_page') }}" class="btn btn-outline-info">Προβολή</a>
+                <h5 class="card-title">{{ _('Τμήματα') }}</h5>
+                <p class="card-text">{{ group_count }} {{ _('ενεργά τμήματα') }}</p>
+                <a href="{{ url_for('views_bp.groups_page') }}" class="btn btn-outline-info">{{ _('Προβολή') }}</a>
             </div>
         </div>
     </div>
@@ -65,9 +65,9 @@
         <div class="card h-100 text-center">
             <div class="card-body">
                 <i class="fas fa-user-tie fa-2x mb-2 text-secondary"></i>
-                <h5 class="card-title">Υπεύθυνοι</h5>
-                <p class="card-text">{{ professor_count }} καθηγητές</p>
-                <a href="{{ url_for('views_bp.professors_page') }}" class="btn btn-outline-secondary">Προβολή</a>
+                <h5 class="card-title">{{ _('Υπεύθυνοι') }}</h5>
+                <p class="card-text">{{ professor_count }} {{ _('καθηγητές') }}</p>
+                <a href="{{ url_for('views_bp.professors_page') }}" class="btn btn-outline-secondary">{{ _('Προβολή') }}</a>
             </div>
         </div>
     </div>

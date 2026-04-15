@@ -1,4 +1,5 @@
 from flask import Flask, session, jsonify, render_template
+from flask_babel import Babel
 from models import db, init_app
 from auth import get_academic_year
 import os
@@ -18,6 +19,15 @@ with app.app_context():
     db.create_all()
 
 # =============================================================================
+# BABEL / i18n
+# =============================================================================
+
+def get_locale():
+    return session.get('language', 'el')
+
+babel = Babel(app, locale_selector=get_locale)
+
+# =============================================================================
 # CONTEXT PROCESSOR
 # =============================================================================
 
@@ -29,6 +39,7 @@ def inject_common_vars():
         'role': session.get('role', 'guest'),
         'AUTH_MODE': app.config['AUTH_MODE'],
         'academic_year': get_academic_year(),
+        'current_language': session.get('language', 'el'),
     }
 
 # =============================================================================
