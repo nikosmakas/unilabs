@@ -73,10 +73,53 @@
         </div>
     </div>
 </div>
+
+<!-- Modal για επεξεργασία τμήματος (ημέρα/ώρα) -->
+<div class="modal fade" id="editGroupModal" tabindex="-1" aria-labelledby="editGroupModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="editGroupModalLabel"><i class="fas fa-edit me-2"></i>{{ _('Επεξεργασία Τμήματος') }}</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ _('Close') }}"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editGroupId">
+        <div class="mb-3">
+          <label for="editGroupDay" class="form-label">{{ _('Ημέρα') }}</label>
+          <select class="form-select" id="editGroupDay">
+            <option value="">-- {{ _('Επιλέξτε ημέρα') }} --</option>
+            <option value="Δευτέρα">Δευτέρα</option>
+            <option value="Τρίτη">Τρίτη</option>
+            <option value="Τετάρτη">Τετάρτη</option>
+            <option value="Πέμπτη">Πέμπτη</option>
+            <option value="Παρασκευή">Παρασκευή</option>
+            <option value="Σάββατο">Σάββατο</option>
+            <option value="Κυριακή">Κυριακή</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">{{ _('Ώρα') }}</label>
+          <div class="d-flex align-items-center gap-2">
+            <input type="time" class="form-control" id="editGroupTimeStart">
+            <span>-</span>
+            <input type="time" class="form-control" id="editGroupTimeEnd">
+          </div>
+        </div>
+        <div id="editGroupAlert"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ _('Άκυρο') }}</button>
+        <button type="button" class="btn btn-primary" onclick="saveGroupEdit()">{{ _('Αποθήκευση') }}</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+    var DAYS = ['Δευτέρα','Τρίτη','Τετάρτη','Πέμπτη','Παρασκευή','Σάββατο','Κυριακή'];
+
     document.addEventListener('DOMContentLoaded', function() {
         loadProfessorGroups();
     });
@@ -99,9 +142,14 @@
                     html += `
                         <div class="col-md-6 col-lg-4 mb-3">
                             <div class="card group-students-card h-100">
-                                <div class="card-header"><strong>${group.lab_name}</strong></div>
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <strong>${group.lab_name}</strong>
+                                    <button class="btn btn-sm btn-outline-light edit-group-btn" data-group-id="${group.group_id}" data-daytime="${group.daytime}" title="Επεξεργασία Τμήματος">
+                                        <i class="fas fa-pencil-alt"></i>
+                                    </button>
+                                </div>
                                 <div class="card-body">
-                                    <p class="mb-2"><i class="fas fa-clock me-2"></i>${group.daytime}</p>
+                                    <p class="mb-2"><i class="fas fa-clock me-2"></i><span id="group-daytime-${group.group_id}">${group.daytime}</span></p>
                                     <div class="mb-3">
                                         <small class="text-muted">Πληρότητα:</small>
                                         <div class="progress occupancy-bar mt-1">
@@ -124,6 +172,11 @@
                         loadGroupStudents(this.dataset.groupId, this.dataset.groupName);
                     });
                 });
+                document.querySelectorAll('.edit-group-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        openEditGroupModal(this.dataset.groupId, this.dataset.daytime);
+                    });
+                });
             } else {
                 container.innerHTML = `<div class="col-12"><div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>Δεν έχετε ανατεθειμένα τμήματα για το τρέχον ακαδημαϊκό έτος.</div></div>`;
             }
@@ -132,6 +185,59 @@
             loading.classList.add('d-none');
             container.classList.remove('d-none');
             container.innerHTML = `<div class="col-12"><div class="alert alert-danger"><i class="fas fa-exclamation-circle me-2"></i>Σφάλμα φόρτωσης τμημάτων.</div></div>`;
+        }
+    }
+
+    // ── Edit Group (day/time) ──────────────────────────────────
+
+    function openEditGroupModal(groupId, daytime) {
+        document.getElementById('editGroupId').value = groupId;
+        document.getElementById('editGroupAlert').innerHTML = '';
+        var parsedDay = '';
+        var parsedTimeStr = daytime || '';
+        for (var i = 0; i < DAYS.length; i++) {
+            if (daytime && daytime.indexOf(DAYS[i]) === 0) {
+                parsedDay = DAYS[i];
+                parsedTimeStr = daytime.substring(DAYS[i].length).trim();
+                break;
+            }
+        }
+        document.getElementById('editGroupDay').value = parsedDay;
+        var timeParts = parsedTimeStr.split('-');
+        document.getElementById('editGroupTimeStart').value = (timeParts[0] || '').trim();
+        document.getElementById('editGroupTimeEnd').value = (timeParts[1] || '').trim();
+        new bootstrap.Modal(document.getElementById('editGroupModal')).show();
+    }
+
+    async function saveGroupEdit() {
+        var groupId = document.getElementById('editGroupId').value;
+        var day = document.getElementById('editGroupDay').value;
+        var timeStart = document.getElementById('editGroupTimeStart').value.trim();
+        var timeEnd = document.getElementById('editGroupTimeEnd').value.trim();
+        var alertBox = document.getElementById('editGroupAlert');
+
+        if (!day) { alertBox.innerHTML = '<div class="alert alert-warning">Επιλέξτε ημέρα.</div>'; return; }
+        if (!timeStart || !timeEnd) { alertBox.innerHTML = '<div class="alert alert-warning">Εισάγετε ώρα έναρξης και λήξης.</div>'; return; }
+
+        try {
+            var response = await fetch('/api/professor/group/' + groupId + '/edit', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ day: day, time: timeStart + ' - ' + timeEnd })
+            });
+            var data = await response.json();
+            if (data.success) {
+                alertBox.innerHTML = '<div class="alert alert-success">Το τμήμα ενημερώθηκε.</div>';
+                var dtSpan = document.getElementById('group-daytime-' + groupId);
+                if (dtSpan) dtSpan.textContent = data.data.daytime;
+                setTimeout(function() {
+                    bootstrap.Modal.getInstance(document.getElementById('editGroupModal')).hide();
+                }, 1000);
+            } else {
+                alertBox.innerHTML = '<div class="alert alert-danger">' + data.message + '</div>';
+            }
+        } catch (error) {
+            alertBox.innerHTML = '<div class="alert alert-danger">Σφάλμα αποθήκευσης.</div>';
         }
     }
 
@@ -150,6 +256,11 @@
         toast.innerHTML = `<i class="fas fa-${icon} me-1"></i>${message}`;
         toast.classList.remove('d-none');
         setTimeout(() => toast.classList.add('d-none'), 4000);
+    }
+
+    function todayStr() {
+        var d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     }
 
     // ── Grade helpers ──────────────────────────────────────────
@@ -195,7 +306,7 @@
         const badgeClass = count === 0 ? 'bg-success' : 'bg-warning text-dark';
         return `<div class="absence-cell">`
             + `<span class="badge ${badgeClass} absence-count-badge" role="button" title="Προβολή απουσιών" style="cursor:pointer">${count}</span>`
-            + ` <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1 add-absence-btn" title="Καταγραφή απουσίας σήμερα" aria-label="Record absence"><i class="fas fa-plus fa-xs"></i></button>`
+            + `<div class="d-inline-flex align-items-center ms-2"><input type="date" class="form-control form-control-sm absence-date-input" value="${todayStr()}" style="width:140px"> <button type="button" class="btn btn-outline-danger btn-sm ms-1 add-absence-btn" title="Καταγραφή απουσίας" aria-label="Record absence"><i class="fas fa-save fa-xs"></i></button></div>`
             + `<div class="absence-dates-list mt-1 d-none">${renderAbsenceDates(student.absences_list)}</div>`
             + `</div>`;
     }
@@ -251,7 +362,6 @@
         badge.setAttribute('style', 'cursor:pointer');
         const datesList = row.querySelector('.absence-dates-list');
         datesList.innerHTML = renderAbsenceDates(absencesList);
-        // Keep the list visible if it was already open
         if (!datesList.classList.contains('d-none')) {
             bindRemoveButtons(row);
         }
@@ -286,7 +396,7 @@
             const response = await fetch(`/api/professor/group/${groupId}/students`);
             const data = await response.json();
             loading.classList.add('d-none');
-            if (data.success && data.data.length > 0) {
+            if (data.success) {
                 document.getElementById('groupStudentsInfo').textContent = groupName;
                 document.getElementById('groupStudentsCount').textContent = `${data.count} φοιτητές`;
                 let html = '';
@@ -309,48 +419,10 @@
                 });
                 document.getElementById('groupStudentsBody').innerHTML = html;
                 content.classList.remove('d-none');
-
-                // Grade save buttons
-                document.querySelectorAll('.save-grade-btn').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const row = this.closest('tr');
-                        const am = row.dataset.am;
-                        const grade = parseInt(row.querySelector('.grade-input').value);
-                        if (isNaN(grade) || grade < 0 || grade > 10) {
-                            showToast('danger', 'Ο βαθμός πρέπει να είναι 0-10.');
-                            return;
-                        }
-                        saveGrade(currentModalGroupId, am, grade, row);
-                    });
-                });
-
-                // Absence add buttons
-                document.querySelectorAll('.add-absence-btn').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const row = this.closest('tr');
-                        addAbsence(currentModalGroupId, row.dataset.am, row, '');
-                    });
-                });
-
-                // Absence count badge toggles the dates list
-                document.querySelectorAll('.absence-count-badge').forEach(badge => {
-                    badge.addEventListener('click', function() {
-                        const row = this.closest('tr');
-                        const datesList = row.querySelector('.absence-dates-list');
-                        datesList.classList.toggle('d-none');
-                        if (!datesList.classList.contains('d-none')) {
-                            bindRemoveButtons(row);
-                        }
-                    });
-                });
-
-                // Remove student buttons
-                document.querySelectorAll('.remove-student-btn').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const row = this.closest('tr');
-                        forceRemoveStudent(currentModalGroupId, row.dataset.am, row);
-                    });
-                });
+                if (data.data.length === 0) {
+                    empty.classList.remove('d-none');
+                }
+                bindAllRowEvents();
             } else {
                 empty.classList.remove('d-none');
             }
@@ -361,6 +433,51 @@
             empty.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>Σφάλμα φόρτωσης φοιτητών.';
             empty.className = 'alert alert-danger';
         }
+    }
+
+    function bindAllRowEvents() {
+        document.querySelectorAll('.save-grade-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const row = this.closest('tr');
+                const am = row.dataset.am;
+                const grade = parseInt(row.querySelector('.grade-input').value);
+                if (isNaN(grade) || grade < 0 || grade > 10) {
+                    showToast('danger', 'Ο βαθμός πρέπει να είναι 0-10.');
+                    return;
+                }
+                saveGrade(currentModalGroupId, am, grade, row);
+            });
+        });
+        document.querySelectorAll('.add-absence-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const row = this.closest('tr');
+                const dateInput = row.querySelector('.absence-date-input');
+                const dateVal = dateInput ? dateInput.value : '';
+                // Convert YYYY-MM-DD to dd/mm/yyyy for the API
+                let dateStr = '';
+                if (dateVal) {
+                    const parts = dateVal.split('-');
+                    if (parts.length === 3) dateStr = parts[2] + '/' + parts[1] + '/' + parts[0];
+                }
+                addAbsence(currentModalGroupId, row.dataset.am, row, dateStr);
+            });
+        });
+        document.querySelectorAll('.absence-count-badge').forEach(badge => {
+            badge.addEventListener('click', function() {
+                const row = this.closest('tr');
+                const datesList = row.querySelector('.absence-dates-list');
+                datesList.classList.toggle('d-none');
+                if (!datesList.classList.contains('d-none')) {
+                    bindRemoveButtons(row);
+                }
+            });
+        });
+        document.querySelectorAll('.remove-student-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const row = this.closest('tr');
+                forceRemoveStudent(currentModalGroupId, row.dataset.am, row);
+            });
+        });
     }
 
     // ── Force remove / add student ───────────────────────────
@@ -375,7 +492,6 @@
             if (data.success) {
                 row.remove();
                 showToast('success', `ΑΜ ${am}: Αφαιρέθηκε από το τμήμα.`);
-                // Update count badge
                 const countEl = document.getElementById('groupStudentsCount');
                 const current = parseInt(countEl.textContent) || 0;
                 if (current > 0) countEl.textContent = (current - 1) + ' φοιτητές';
@@ -416,14 +532,17 @@
                     + `<td><button class="btn btn-sm btn-outline-danger remove-student-btn" title="Αφαίρεση" aria-label="Remove student"><i class="fas fa-user-times"></i></button></td>`;
                 document.getElementById('groupStudentsBody').appendChild(newRow);
 
-                // Bind events on the new row
                 newRow.querySelector('.save-grade-btn').addEventListener('click', function() {
                     const grade = parseInt(newRow.querySelector('.grade-input').value);
                     if (isNaN(grade) || grade < 0 || grade > 10) { showToast('danger', 'Ο βαθμός πρέπει να είναι 0-10.'); return; }
                     saveGrade(currentModalGroupId, s.am, grade, newRow);
                 });
                 newRow.querySelector('.add-absence-btn').addEventListener('click', function() {
-                    addAbsence(currentModalGroupId, s.am, newRow, '');
+                    const dateInput = newRow.querySelector('.absence-date-input');
+                    const dateVal = dateInput ? dateInput.value : '';
+                    let dateStr = '';
+                    if (dateVal) { const p = dateVal.split('-'); if (p.length===3) dateStr = p[2]+'/'+p[1]+'/'+p[0]; }
+                    addAbsence(currentModalGroupId, s.am, newRow, dateStr);
                 });
                 newRow.querySelector('.absence-count-badge').addEventListener('click', function() {
                     const dl = newRow.querySelector('.absence-dates-list');
@@ -439,6 +558,8 @@
                 const countEl = document.getElementById('groupStudentsCount');
                 const current = parseInt(countEl.textContent) || 0;
                 countEl.textContent = (current + 1) + ' φοιτητές';
+                // Ensure content is visible (was hidden if group was empty)
+                document.getElementById('groupStudentsContent').classList.remove('d-none');
             } else {
                 showToast('danger', data.message);
             }

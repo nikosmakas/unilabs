@@ -99,6 +99,8 @@
                     <i class="fas fa-user-graduate me-2"></i>{{ _('Φοιτητές') }}
                 </a>
             </li>
+            {% endif %}
+            {% if role == 'professor' %}
             <li class="nav-item">
                 <a class="nav-link {% if active_page == 'my_groups' %}active{% endif %}" href="{{ url_for('views_bp.my_groups_page') }}">
                     <i class="fas fa-chalkboard-teacher me-2"></i>{{ _('Τα Τμήματά μου') }}

@@ -21,14 +21,14 @@
         <div class="card h-100">
             <div class="card-body">
                 <h5 class="card-title">{{ prof.name }}</h5>
-                <h6 class="card-subtitle mb-2 text-muted">{{ prof.status }}</h6>
+                {% if prof.status %}<h6 class="card-subtitle mb-2 text-muted"><i class="fas fa-graduation-cap me-1"></i><span id="status-{{ prof.prof_id }}">{{ prof.status }}</span></h6>{% endif %}
                 <p class="card-text">
                     <i class="fas fa-door-open me-1"></i><span id="office-{{ prof.prof_id }}">{{ prof.office }}</span><br>
                     <i class="fas fa-envelope me-1"></i><a href="mailto:{{ prof.email }}">{{ prof.email }}</a><br>
                     <i class="fas fa-phone me-1"></i><span id="tel-{{ prof.prof_id }}">{{ prof.tel }}</span>
                 </p>
                 {% if role == 'admin' or (role == 'professor' and session.get('schGrAcPersonID')|string == prof.prof_id|string) %}
-                <button class="btn btn-sm btn-outline-primary" onclick="openEditModal({{ prof.prof_id }}, '{{ prof.office }}', '{{ prof.tel }}')">
+                <button class="btn btn-sm btn-outline-primary" onclick="openEditModal({{ prof.prof_id }}, '{{ prof.office }}', '{{ prof.tel }}', '{{ prof.status }}')">
                     <i class="fas fa-edit me-1"></i>{{ _('Επεξεργασία') }}
                 </button>
                 {% endif %}
@@ -54,6 +54,10 @@
       </div>
       <div class="modal-body">
         <input type="hidden" id="editProfId">
+        <div class="mb-3">
+          <label for="editProfStatus" class="form-label">{{ _('Τίτλος/Βαθμίδα') }}</label>
+          <input type="text" class="form-control" id="editProfStatus" placeholder="π.χ. Αναπληρωτής Καθηγητής">
+        </div>
         <div class="mb-3">
           <label for="editProfOffice" class="form-label">{{ _('Γραφείο') }}</label>
           <input type="text" class="form-control" id="editProfOffice">
@@ -96,6 +100,10 @@
           </div>
         </div>
         <div class="mb-3">
+          <label for="newProfStatus" class="form-label">{{ _('Τίτλος/Βαθμίδα') }}</label>
+          <input type="text" class="form-control" id="newProfStatus" placeholder="π.χ. Αναπληρωτής Καθηγητής">
+        </div>
+        <div class="mb-3">
           <label for="newProfEmail" class="form-label">Email</label>
           <input type="email" class="form-control" id="newProfEmail" placeholder="prof@uoi.gr">
         </div>
@@ -126,8 +134,9 @@
 {% block scripts %}
 {% if role == 'admin' or role == 'professor' %}
 <script>
-function openEditModal(profId, office, tel) {
+function openEditModal(profId, office, tel, status) {
     document.getElementById('editProfId').value = profId;
+    document.getElementById('editProfStatus').value = status || '';
     document.getElementById('editProfOffice').value = office;
     document.getElementById('editProfTel').value = tel;
     document.getElementById('editProfAlert').innerHTML = '';
@@ -136,10 +145,11 @@ function openEditModal(profId, office, tel) {
 
 function submitProfEdit() {
     const profId = document.getElementById('editProfId').value;
+    const status = document.getElementById('editProfStatus').value.trim();
     const office = document.getElementById('editProfOffice').value.trim();
     const tel = document.getElementById('editProfTel').value.trim();
 
-    if (!office && !tel) {
+    if (!office && !tel && !status) {
         document.getElementById('editProfAlert').innerHTML =
             '<div class="alert alert-warning">Συμπληρώστε τουλάχιστον ένα πεδίο.</div>';
         return;
@@ -153,13 +163,15 @@ function submitProfEdit() {
     fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ office: office, tel: tel })
+        body: JSON.stringify({ office: office, tel: tel, status: status })
     })
     .then(r => r.json())
     .then(data => {
         if (data.success) {
             document.getElementById('office-' + profId).textContent = data.data.office;
             document.getElementById('tel-' + profId).textContent = data.data.tel;
+            var statusEl = document.getElementById('status-' + profId);
+            if (statusEl) statusEl.textContent = data.data.status || '';
             bootstrap.Modal.getInstance(document.getElementById('editProfModal')).hide();
         } else {
             document.getElementById('editProfAlert').innerHTML =
@@ -176,6 +188,7 @@ function submitProfEdit() {
 function openCreateProfModal() {
     document.getElementById('newProfName').value = '';
     document.getElementById('newProfSurname').value = '';
+    document.getElementById('newProfStatus').value = '';
     document.getElementById('newProfEmail').value = '';
     document.getElementById('newProfOffice').value = '';
     document.getElementById('newProfTel').value = '';
@@ -187,6 +200,7 @@ function saveProfessor() {
     const name = document.getElementById('newProfName').value.trim();
     const surname = document.getElementById('newProfSurname').value.trim();
     const email = document.getElementById('newProfEmail').value.trim();
+    const status = document.getElementById('newProfStatus').value.trim();
     const office = document.getElementById('newProfOffice').value.trim();
     const tel = document.getElementById('newProfTel').value.trim();
     const alertBox = document.getElementById('createProfAlert');
@@ -197,7 +211,7 @@ function saveProfessor() {
     fetch('/api/admin/professors', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name, surname: surname, email: email, office: office, tel: tel })
+        body: JSON.stringify({ name: name, surname: surname, email: email, status: status, office: office, tel: tel })
     })
     .then(r => r.json())
     .then(data => {

@@ -456,6 +456,13 @@ def api_add_absence(group_id, am):
     date_str = data.get('date', '').strip()
     if not date_str:
         date_str = datetime.now().strftime('%d/%m/%Y')
+    else:
+        # Normalise YYYY-MM-DD (from HTML date input) to dd/mm/yyyy
+        try:
+            parsed_dt = datetime.strptime(date_str, '%Y-%m-%d')
+            date_str = parsed_dt.strftime('%d/%m/%Y')
+        except ValueError:
+            pass  # already dd/mm/yyyy or another format, use as-is
 
     # Verify the student is actually in this group
     if not RelGroupStudent.query.filter_by(am=am, group_id=group_id).first():
@@ -463,12 +470,15 @@ def api_add_absence(group_id, am):
 
     try:
         rec = StudentMissesPerGroup.query.filter_by(am=am, group_id=group_id).first()
-        if rec:
+        if rec and rec.misses:
             existing = [d.strip() for d in rec.misses.split(',') if d.strip()]
             if date_str in existing:
                 return jsonify({'success': False, 'message': 'Absence already recorded for this date'}), 400
             existing.append(date_str)
             rec.misses = ', '.join(existing)
+        elif rec:
+            # Record exists but misses string is empty (after all were deleted)
+            rec.misses = date_str
         else:
             rec = StudentMissesPerGroup(am=am, group_id=group_id, misses=date_str)
             db.session.add(rec)
@@ -982,6 +992,8 @@ def api_admin_get_group(group_id):
     prof_rel = RelGroupProf.query.filter_by(group_id=group_id).first()
     prof_id = prof_rel.prof_id if prof_rel else None
 
+    student_count = RelGroupStudent.query.filter_by(group_id=group_id).count()
+
     return jsonify({
         'success': True,
         'data': {
@@ -991,7 +1003,8 @@ def api_admin_get_group(group_id):
             'finalize': group.finalize,
             'lab_id': lab_id,
             'lab_name': lab.name if lab else None,
-            'prof_id': prof_id
+            'prof_id': prof_id,
+            'student_count': student_count
         }
     })
 
@@ -1111,6 +1124,7 @@ def api_admin_edit_group(group_id):
     day = data.get('day', '').strip()
     time_str = data.get('time', '').strip()
     prof_id = data.get('prof_id')
+    new_lab_id = data.get('lab_id')
 
     old_daytime = group.daytime
 
@@ -1120,6 +1134,22 @@ def api_admin_edit_group(group_id):
         group.daytime = day
     elif time_str:
         group.daytime = time_str
+
+    # Update lab assignment (only allowed when no students are enrolled)
+    if new_lab_id is not None:
+        student_count = RelGroupStudent.query.filter_by(group_id=group_id).count()
+        if student_count > 0:
+            return jsonify({'success': False,
+                            'message': 'Cannot change lab: group has enrolled students. Remove them first.'}), 400
+        new_lab = CourseLab.query.get(int(new_lab_id))
+        if not new_lab:
+            return jsonify({'success': False, 'message': 'Lab not found'}), 404
+        # Update the rel_lab_group link
+        existing_link = RelLabGroup.query.filter_by(group_id=group_id).first()
+        if existing_link:
+            existing_link.lab_id = int(new_lab_id)
+        else:
+            db.session.add(RelLabGroup(lab_id=int(new_lab_id), group_id=group_id))
 
     # Update professor assignment
     if prof_id is not None:
@@ -1149,6 +1179,57 @@ def api_admin_edit_group(group_id):
             'group_id': group.group_id,
             'daytime': group.daytime,
             'prof_id': new_prof_rel.prof_id if new_prof_rel else None
+        }
+    })
+
+
+# =============================================================================
+# PROFESSOR EDIT OWN GROUP (day/time only)
+# =============================================================================
+
+@api_bp.route('/api/professor/group/<int:group_id>/edit', methods=['PUT'])
+@require_permission('groups', 'view')
+def api_professor_edit_group(group_id):
+    """Allow the assigned professor to update their own group's day/time."""
+    err = _check_group_ownership(group_id)
+    if err:
+        return err
+
+    group = LabGroup.query.get(group_id)
+    if not group:
+        return jsonify({'success': False, 'message': 'Group not found'}), 404
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'message': 'No data provided'}), 400
+
+    day = data.get('day', '').strip()
+    time_str = data.get('time', '').strip()
+
+    old_daytime = group.daytime
+
+    if day and time_str:
+        group.daytime = day + ' ' + time_str
+    elif day:
+        group.daytime = day
+    elif time_str:
+        group.daytime = time_str
+    else:
+        return jsonify({'success': False, 'message': 'Day or time is required'}), 400
+
+    db.session.commit()
+
+    audit_log('group_updated',
+              old_value=f"daytime={old_daytime}",
+              new_value=f"daytime={group.daytime}",
+              reason=f"Professor edited group {group_id}")
+
+    return jsonify({
+        'success': True,
+        'message': 'Group updated',
+        'data': {
+            'group_id': group.group_id,
+            'daytime': group.daytime
         }
     })
 
@@ -1324,10 +1405,13 @@ def api_edit_professor_profile():
     if not data:
         return jsonify({'success': False, 'message': 'No data provided'}), 400
 
-    old_values = f"office={professor.office}, tel={professor.tel}"
+    old_values = f"status={professor.status}, office={professor.office}, tel={professor.tel}"
 
+    status = data.get('status', '').strip()
     office = data.get('office', '').strip()
     tel = data.get('tel', '').strip()
+    if status is not None and status != '':
+        professor.status = status
     if office:
         professor.office = office
     if tel:
@@ -1337,13 +1421,13 @@ def api_edit_professor_profile():
 
     audit_log('professor_profile_updated',
               old_value=old_values,
-              new_value=f"office={professor.office}, tel={professor.tel}",
+              new_value=f"status={professor.status}, office={professor.office}, tel={professor.tel}",
               reason="Professor profile edited")
 
     return jsonify({
         'success': True, 'message': 'Profile updated',
         'data': {'prof_id': professor.prof_id, 'name': professor.name,
-                 'office': professor.office, 'tel': professor.tel}
+                 'status': professor.status, 'office': professor.office, 'tel': professor.tel}
     })
 
 
@@ -1451,11 +1535,12 @@ def api_admin_create_professor():
     if not email:
         return jsonify({'success': False, 'message': 'Email is required'}), 400
 
+    status = data.get('status', '').strip()
     full_name = surname + ' ' + name
 
     new_prof = Professor(
         name=full_name,
-        status='',
+        status=status or '',
         office=office or '',
         email=email,
         tel=tel or ''

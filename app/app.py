@@ -43,6 +43,20 @@ def inject_common_vars():
     }
 
 # =============================================================================
+# PREVENT BROWSER CACHING OF AUTHENTICATED PAGES
+# =============================================================================
+
+@app.after_request
+def add_no_cache_headers(response):
+    """Prevent the browser from caching authenticated pages so the back button
+    does not show stale content after logout."""
+    if 'text/html' in response.content_type:
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
+
+# =============================================================================
 # ERROR HANDLERS
 # =============================================================================
 

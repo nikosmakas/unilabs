@@ -4,7 +4,7 @@ from flask_babel import _
 from models import (
     Student, Professor, db, LabGroup, CourseLab,
     RelLabGroup, RelLabStudent, StudentMissesPerGroup,
-    Coursename, CourseEligibility
+    Coursename, CourseEligibility, RelCourseLab
 )
 from auth import (
     require_permission, require_role, get_academic_year, get_student_enrollments
@@ -79,15 +79,20 @@ def groups_page():
     academic_year = get_academic_year()
 
     groups_raw = db.session.query(
-        LabGroup, RelLabGroup.lab_id, CourseLab.name.label('lab_name')
+        LabGroup, RelLabGroup.lab_id, CourseLab.name.label('lab_name'),
+        Coursename.semester.label('semester')
     ).join(
         RelLabGroup, LabGroup.group_id == RelLabGroup.group_id
     ).join(
         CourseLab, RelLabGroup.lab_id == CourseLab.lab_id
+    ).outerjoin(
+        RelCourseLab, CourseLab.lab_id == RelCourseLab.lab_id
+    ).outerjoin(
+        Coursename, RelCourseLab.course_id == Coursename.course_id
     ).filter(LabGroup.year == academic_year).all()
 
     groups = []
-    for group, lab_id, lab_name in groups_raw:
+    for group, lab_id, lab_name, semester in groups_raw:
         occupancy = get_group_occupancy(group.group_id, lab_id)
         groups.append({
             'group_id': group.group_id,
@@ -95,6 +100,7 @@ def groups_page():
             'year': group.year,
             'lab_id': lab_id,
             'lab_name': lab_name,
+            'semester': semester or '-',
             'occupancy_percentage': occupancy['percentage'],
             'available_spots': occupancy['available'],
             'is_full': occupancy['is_full']

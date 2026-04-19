@@ -21,6 +21,7 @@
             <tr>
                 <th>ID</th>
                 <th>{{ _('Εργαστήριο') }}</th>
+                <th>{{ _('Εξάμηνο') }}</th>
                 <th>{{ _('Ώρα/Μέρα') }}</th>
                 <th>{{ _('Έτος') }}</th>
                 <th>{{ _('Πληρότητα') }}</th>
@@ -35,6 +36,7 @@
             <tr class="{% if group.is_full %}table-danger{% endif %}">
                 <td>{{ group.group_id }}</td>
                 <td><strong>{{ group.lab_name }}</strong></td>
+                <td><span class="badge bg-secondary">{{ group.semester }}</span></td>
                 <td>{{ group.daytime }}</td>
                 <td>{{ group.year }}</td>
                 <td>
@@ -91,6 +93,9 @@
               <option value="{{ lab.lab_id }}">{{ lab.name }}</option>
               {% endfor %}
             </select>
+            <small class="form-text text-muted d-none" id="groupLabCaption">
+              <i class="fas fa-info-circle me-1"></i>{{ _('Η αλλαγή εργαστηρίου επιτρέπεται μόνο σε άδεια τμήματα.') }}
+            </small>
           </div>
           <div class="mb-3">
             <label for="groupDaySelect" class="form-label">{{ _('Ημέρα') }}</label>
@@ -106,8 +111,12 @@
             </select>
           </div>
           <div class="mb-3">
-            <label for="groupTimeInput" class="form-label">{{ _('Ώρα') }} (π.χ. 10:00 - 12:00)</label>
-            <input type="text" class="form-control" id="groupTimeInput" placeholder="10:00 - 12:00">
+            <label class="form-label">{{ _('Ώρα') }}</label>
+            <div class="d-flex align-items-center gap-2">
+              <input type="time" class="form-control" id="groupTimeStart">
+              <span>-</span>
+              <input type="time" class="form-control" id="groupTimeEnd">
+            </div>
           </div>
           <div class="mb-3">
             <label for="groupProfSelect" class="form-label">{{ _('Υπεύθυνος Καθηγητής') }}</label>
@@ -162,8 +171,10 @@ function openCreateGroupModal() {
     document.getElementById('groupLabSelectWrap').classList.remove('d-none');
     document.getElementById('groupLabSelect').disabled = false;
     document.getElementById('groupLabSelect').value = '';
+    document.getElementById('groupLabCaption').classList.add('d-none');
     document.getElementById('groupDaySelect').value = '';
-    document.getElementById('groupTimeInput').value = '';
+    document.getElementById('groupTimeStart').value = '';
+    document.getElementById('groupTimeEnd').value = '';
     document.getElementById('groupProfSelect').value = '';
     document.getElementById('groupModalAlert').innerHTML = '';
     document.getElementById('groupModalLoading').classList.add('d-none');
@@ -180,6 +191,7 @@ function openEditGroupModal(groupId) {
     alertBox.innerHTML = '';
     document.getElementById('groupModalTitle').textContent = 'Επεξεργασία Τμήματος #' + groupId;
     document.getElementById('groupLabSelectWrap').classList.add('d-none');
+    document.getElementById('groupLabCaption').classList.add('d-none');
     document.getElementById('groupSaveBtn').innerHTML = '<i class="fas fa-save me-1"></i>Αποθήκευση';
     new bootstrap.Modal(document.getElementById('groupAdminModal')).show();
 
@@ -194,17 +206,32 @@ function openEditGroupModal(groupId) {
             var d = resp.data;
             // Parse daytime: try to split "Day HH:MM - HH:MM"
             var parsedDay = '';
-            var parsedTime = d.daytime || '';
+            var parsedTimeStr = d.daytime || '';
             for (var i = 0; i < DAYS.length; i++) {
                 if (d.daytime && d.daytime.indexOf(DAYS[i]) === 0) {
                     parsedDay = DAYS[i];
-                    parsedTime = d.daytime.substring(DAYS[i].length).trim();
+                    parsedTimeStr = d.daytime.substring(DAYS[i].length).trim();
                     break;
                 }
             }
             document.getElementById('groupDaySelect').value = parsedDay;
-            document.getElementById('groupTimeInput').value = parsedTime;
+            // Parse "HH:MM - HH:MM" into two time inputs
+            var timeParts = parsedTimeStr.split('-');
+            document.getElementById('groupTimeStart').value = (timeParts[0] || '').trim();
+            document.getElementById('groupTimeEnd').value = (timeParts[1] || '').trim();
             document.getElementById('groupProfSelect').value = d.prof_id ? d.prof_id : '';
+
+            // Show lab select if the group has 0 enrolled students
+            var studentCount = d.student_count || 0;
+            if (studentCount === 0) {
+                document.getElementById('groupLabSelectWrap').classList.remove('d-none');
+                document.getElementById('groupLabSelect').disabled = false;
+                document.getElementById('groupLabSelect').value = d.lab_id ? d.lab_id : '';
+                document.getElementById('groupLabCaption').classList.remove('d-none');
+            } else {
+                document.getElementById('groupLabSelectWrap').classList.add('d-none');
+                document.getElementById('groupLabCaption').classList.add('d-none');
+            }
         })
         .catch(function() {
             loading.classList.add('d-none');
@@ -222,11 +249,14 @@ function showGroupAlert(type, message) {
 
 function saveGroupAdmin() {
     var day = document.getElementById('groupDaySelect').value;
-    var time = document.getElementById('groupTimeInput').value.trim();
+    var timeStart = document.getElementById('groupTimeStart').value.trim();
+    var timeEnd = document.getElementById('groupTimeEnd').value.trim();
     var profId = document.getElementById('groupProfSelect').value;
 
     if (!day) { showGroupAlert('warning', 'Επιλέξτε ημέρα.'); return; }
-    if (!time) { showGroupAlert('warning', 'Εισάγετε ώρα.'); return; }
+    if (!timeStart || !timeEnd) { showGroupAlert('warning', 'Εισάγετε ώρα έναρξης και λήξης.'); return; }
+
+    var time = timeStart + ' - ' + timeEnd;
 
     var body = {
         day: day,
@@ -254,6 +284,13 @@ function saveGroupAdmin() {
         })
         .catch(function() { showGroupAlert('danger', 'Σφάλμα δημιουργίας.'); });
     } else {
+        // In edit mode, include lab_id if the lab select is visible
+        var labWrap = document.getElementById('groupLabSelectWrap');
+        if (!labWrap.classList.contains('d-none')) {
+            var editLabId = document.getElementById('groupLabSelect').value;
+            if (editLabId) body.lab_id = parseInt(editLabId);
+        }
+
         fetch('/api/admin/groups/' + currentGroupId, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },

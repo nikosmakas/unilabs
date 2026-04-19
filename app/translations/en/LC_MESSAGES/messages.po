@@ -393,3 +393,14 @@ msgstr "Error during unenrollment"
 msgid "Δεν έχετε δικαίωμα εγγραφής. Δεν βρέθηκε δήλωση του θεωρητικού μαθήματος."
 msgstr "You are not eligible for registration. No theory course enrollment found."
 
+msgid "Η αλλαγή εργαστηρίου επιτρέπεται μόνο σε άδεια τμήματα."
+msgstr "Changing lab is only allowed for empty groups."
+
+msgid "Τίτλος/Βαθμίδα"
+msgstr "Title/Rank"
+
+msgid "Επεξεργασία Τμήματος"
+msgstr "Edit Group"
+
+
+
